@@ -19,12 +19,13 @@ import java.util.stream.*;
 public class StateGatherer {
 
     protected static boolean debug = false;
-    protected String fileLocation = "C://simulation/hanabi";
+    protected String fileLocation = "hanabiData";
     protected GsonBuilder builder = new GsonBuilder();
     protected Gson gson = builder.create();
     protected static Logger logger = LoggerFactory.getLogger(StateGatherer.class);
 
     public static List<String> allFeatures = new ArrayList();
+    private static final int[] numberOfType = new int[]{0, 3, 2, 2, 2, 1};
 
     static {
         allFeatures.add("SCORE");
@@ -57,11 +58,11 @@ public class StateGatherer {
         // Ah - that would be a problem for QFn, where this is called at the Rule level!
         Map<String, Double> features = extractFeatures(state, agentID);
         if (action != null && action instanceof PlayCard) {
-            double playable = probabilityPlayable(((PlayCard) action).slot, agentID, state);
+            double playable = probabilities(((PlayCard) action).slot, state, agentID)[0];
             features.put("PLAY_CARD", 1.0);
             features.put("PLAY_PLAYABLE", playable);
         } else if (action != null && action instanceof DiscardCard) {
-            double discardable = probabilityDiscardable(((DiscardCard) action).slot, agentID, state);
+            double discardable = probabilities(((DiscardCard) action).slot, state, agentID)[1];
             double isSecondOfUseful = lastCardOfUsefulPair(((DiscardCard) action).slot, agentID, state);
             features.put("DISCARD_CARD", 1.0);
             features.put("DISCARD_IS_USELESS", discardable);
@@ -96,7 +97,7 @@ public class StateGatherer {
                         .mapToObj(playerHand::getCard)
                         .filter(Objects::nonNull)
                         .forEach(possibles::add);
-            // we need to add the actual cards in the player's hand to those they thiink they might have
+            // we need to add the actual cards in the player's hand to those they think they might have
 
             Map<Integer, List<Card>> possibleCards = DeckUtils.bindBlindCard(featurePlayer, playerHand, possibles);
             //         Map<Integer, List<Card>> actualCards = DeckUtils.bindCard(featurePlayer, playerHand, gameState.getDeck().toList());
@@ -111,27 +112,11 @@ public class StateGatherer {
                         output.append("[" + playerHand.getCard(slot).toString() + "]\t");
                     possibleCards.get(slot).stream().forEach(c -> output.append(c.toString()));
                 }
-                int playable = 0;
-                int discardable = 0;
-                for (Card c : possibleCards.get(slot)) {
-                    if (gameState.getTableValue(c.colour) == c.value - 1)
-                        playable++;
-                    else if (gameState.getTableValue(c.colour) >= c.value)
-                        discardable++;
-                    else if (c.value > 2 && allCardsDiscarded(c.value - 1, c.colour, gameState.getDiscards()))
-                        discardable++;
-                    else if (c.value > 3 && allCardsDiscarded(c.value - 2, c.colour, gameState.getDiscards()))
-                        discardable++;
-                    else if (c.value > 4 && allCardsDiscarded(c.value - 3, c.colour, gameState.getDiscards()))
-                        discardable++;
-                }
-                double totalCards = possibleCards.get(slot).size();
-                double playableProb = playable / totalCards;
-                double discardableProb = discardable / totalCards;
+                double[] playDiscardProb = probabilities(gameState, possibleCards.get(slot));
                 if (debug)
-                    logger.debug(String.format("Player %d, Slot %d, Play %1.2f, Discard %1.2f: %s", featurePlayer, slot, playableProb, discardableProb, output));
-                updateOrder(maxPlayable, playableProb);
-                updateOrder(maxDiscardable, discardableProb);
+                    logger.debug(String.format("Player %d, Slot %d, Play %1.2f, Discard %1.2f: %s", featurePlayer, slot, playDiscardProb[0], playDiscardProb[1], output));
+                updateOrder(maxPlayable, playDiscardProb[0]);
+                updateOrder(maxDiscardable, playDiscardProb[1]);
             }
             newTuple.put(featureID + "_PLAYABLE_1", maxPlayable[0]);
             newTuple.put(featureID + "_PLAYABLE_2", maxPlayable[1]);
@@ -156,27 +141,85 @@ public class StateGatherer {
 
     }
 
-    private static double probabilityPlayable(int slot, int player, GameState state) {
-        // TODO:
-        return 0.0;
+    private static List<Card> getPossibleCards(int slot, GameState state, int playerID) {
+        List<Card> possibles = state.getDeck().toList();
+        Hand playerHand = state.getHand(playerID);
+        IntStream.range(0, playerHand.getSize())
+                .mapToObj(playerHand::getCard)
+                .filter(Objects::nonNull)
+                .forEach(possibles::add);
+
+        Map<Integer, List<Card>> possibleCards = DeckUtils.bindBlindCard(playerID, playerHand, possibles);
+        return possibleCards.get(slot);
     }
 
-    private static double probabilityDiscardable(int slot, int player, GameState state) {
-        // TODO:
-        return 0.0;
+    private static double[] probabilities(int slot, GameState state, int playerID) {
+        List<Card> possibles = state.getDeck().toList();
+        Hand playerHand = state.getHand(playerID);
+        IntStream.range(0, playerHand.getSize())
+                .mapToObj(playerHand::getCard)
+                .filter(Objects::nonNull)
+                .forEach(possibles::add);
+
+        Map<Integer, List<Card>> possibleCards = DeckUtils.bindBlindCard(playerID, playerHand, possibles);
+
+        return probabilities(state, possibleCards.get(slot));
+    }
+
+    private static double[] probabilities(GameState gameState, List<Card> possibleCards) {
+        int playable = 0;
+        int discardable = 0;
+        for (Card c : possibleCards) {
+            if (gameState.getTableValue(c.colour) == c.value - 1)
+                playable++;
+            else if (gameState.getTableValue(c.colour) >= c.value)
+                discardable++;
+            else if (c.value > 2 && allCardsDiscarded(c.value - 1, c.colour, gameState.getDiscards()))
+                discardable++;
+            else if (c.value > 3 && allCardsDiscarded(c.value - 2, c.colour, gameState.getDiscards()))
+                discardable++;
+            else if (c.value > 4 && allCardsDiscarded(c.value - 3, c.colour, gameState.getDiscards()))
+                discardable++;
+        }
+        double totalCards = possibleCards.size();
+        double[] retValue = new double[2];
+        retValue[0] = playable / totalCards;
+        retValue[1] = discardable / totalCards;
+        return retValue;
     }
 
     private static double lastCardOfUsefulPair(int slot, int player, GameState state) {
-        // TODO:
-        return 0.0;
+        double numberOfSuchCards = 0.0;
+
+        List<Card> possibleCards = getPossibleCards(slot, state, player);
+        for (Card c : possibleCards) {
+            if (state.getTableValue(c.colour) >= c.value) {
+                // not useful (discardable)
+            } else { // check to see if any of the intervening numbers have all been discarded
+                boolean discardable = false;
+                for (int v = state.getTableValue(c.colour) + 1; v < c.value; v++) {
+                    int max = numberOfType[v];
+                    int currentV = v;
+                    long inDiscard = state.getDiscards().stream()
+                            .filter(card -> card.value == currentV && card.colour == c.colour)
+                            .collect(Collectors.counting());
+                    if (inDiscard >= max) discardable = true;
+                }
+                if (!discardable) {
+                    // still in the running
+                    long inDiscard = state.getDiscards().stream()
+                            .filter(card -> card.value == c.value && card.colour == c.colour)
+                            .collect(Collectors.counting());
+                    if (inDiscard + 1 == numberOfType[c.value])
+                        numberOfSuchCards += 1.0;
+                }
+            }
+        }
+        return numberOfSuchCards / possibleCards.size();
     }
 
     private static boolean allCardsDiscarded(int value, CardColour colour, Collection<Card> discardPile) {
-        int possibleCards = 2;
-        if (value == 4)
-            possibleCards = 1;
-        if (value == 3)
-            possibleCards = 3;
+        int possibleCards = numberOfType[value];
         for (Card discard : discardPile) {
             if (discard.colour == colour) {
                 if (discard.value == value) {
