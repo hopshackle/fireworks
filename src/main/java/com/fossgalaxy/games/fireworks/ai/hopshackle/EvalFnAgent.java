@@ -97,13 +97,24 @@ public class EvalFnAgent implements Agent {
         List<Action> retValue = MCTSRuleInfoSet.allRules.stream()
                 .filter(r -> r.canFire(agentID, state))
                 .map(r -> r.execute(agentID, state))
-                .filter(a -> a.isLegal(agentID, state))
+                .filter(p -> {
+                    // this section should use Action.isLegal(). But that is broken for Play and Discard
+                    if (p instanceof PlayCard) {
+                        int slot = ((PlayCard) p).slot;
+                        return state.getHand(agentID).hasCard(slot);
+                    } else if (p instanceof DiscardCard) {
+                        int slot = ((DiscardCard) p).slot;
+                        return state.getHand(agentID).hasCard(slot) && state.getInfomation() != state.getStartingInfomation();
+                    } else {
+                        return state.getInfomation() != 0;
+                    }
+                })
                 .distinct()
                 .collect(Collectors.toList());
         return retValue;
     }
 
-    private GameState rollForward(Action action, int agentID, GameState state) {
+    public static GameState rollForward(Action action, int agentID, GameState state) {
         if(action instanceof PlayCard || action instanceof DiscardCard) return state;
         // we don't roll forward Play or Discard actions, as that introduces determinised info
         // instead we cater for this in the feature representation
@@ -113,7 +124,9 @@ public class EvalFnAgent implements Agent {
     }
 
     private double valueState(GameState state, Action action, int agentID) {
-        INDArray featureRepresentation = StateGatherer.extractFeaturesAsNDArray(state, action, agentID);
+        Map<String, Double> features = StateGatherer.extractFeatures(state, agentID);
+        features.putAll(StateGatherer.extractActionFeatures(action, state, agentID));
+        INDArray featureRepresentation = StateGatherer.featuresToNDArray(features);
         if (debug) {
             logger.debug(featureRepresentation.toString());
         }

@@ -10,6 +10,7 @@ import com.fossgalaxy.games.fireworks.state.events.GameEvent;
 import com.fossgalaxy.games.fireworks.utils.DebugUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by WebPigeon on 09/08/2016.
@@ -49,10 +50,6 @@ public class MCTSInfoSet extends MCTS {
     @Override
     public Action doMove(int agentID, GameState state) {
         long finishTime = System.currentTimeMillis() + timeLimit;
-
-        if (stateGatherer != null) {
-            stateGatherer.storeData(state, agentID);
-        }
 
         MCTSNode root = createNode(null, (agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), null, state);
 
@@ -102,6 +99,11 @@ public class MCTSInfoSet extends MCTS {
             System.out.println(String.format("Player %d: MCTS choice is %s, with rollout %s", agentID, chosenOne.toString(), rolloutAction.toString()));
         }
         */
+
+        if (stateGatherer != null) {
+            stateGatherer.storeData(root, state, agentID);
+        }
+
         return chosenOne;
     }
 
@@ -109,6 +111,16 @@ public class MCTSInfoSet extends MCTS {
         MCTSNode current = root;
         int treeDepth = calculateTreeDepthLimit(state);
         boolean expandedNode = false;
+
+        if (logger.isDebugEnabled()) {
+            String logMessage = "All legal moves from root: " +
+                    ((MCTSRuleNode) root).getAllLegalMoves(state, (root.agentId + 1) % state.getPlayerCount())
+                            .stream()
+                            .map(Action::toString)
+                            .collect(Collectors.joining("\t"));
+            logger.debug(logMessage);
+        }
+
 
         while (!state.isGameOver() && current.getDepth() < treeDepth && !expandedNode) {
             MCTSNode next;
@@ -127,9 +139,14 @@ public class MCTSInfoSet extends MCTS {
                 return current;
             }
 
+            if (next.getAgent() != agentAboutToAct) {
+                throw new AssertionError("WTF");
+            }
+
             current = next;
 
             int agent = current.getAgent(); // this is the acting agent
+
             int lives = state.getLives();
             int score = state.getScore();
 

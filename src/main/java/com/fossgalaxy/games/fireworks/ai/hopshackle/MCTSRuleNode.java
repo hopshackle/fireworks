@@ -1,15 +1,11 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
 import com.fossgalaxy.games.fireworks.ai.rule.Rule;
-import com.fossgalaxy.games.fireworks.state.GameState;
-import com.fossgalaxy.games.fireworks.state.actions.Action;
+import com.fossgalaxy.games.fireworks.state.*;
+import com.fossgalaxy.games.fireworks.state.actions.*;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.*;
+import java.util.stream.*;
 
 /**
  * Created by hopshackle on 26/05/2018.
@@ -55,7 +51,7 @@ public class MCTSRuleNode extends MCTSNode {
         MCTSNode bestChild = null;
 
         int agentToAct = (getAgent() + 1) % state.getPlayerCount();
-        Collection<Action> legalMoves = getAllLegalMoves(state, agentToAct).collect(Collectors.toList());
+        List<Action> legalMoves = getAllLegalMoves(state, agentToAct);
         for (Action legalAction : legalMoves) incrementParentVisit(legalAction);
 
         List<MCTSNode> validChildren = children.stream()
@@ -77,9 +73,9 @@ public class MCTSRuleNode extends MCTSNode {
     public List<Rule> getRulesForChild(MCTSNode child, GameState fromState, int agentID) {
         return allRules.stream()
                 .filter(r -> {
-                       Action a = r.execute(agentID, fromState);
-                       if (a == null) return false;
-                       return (a.equals(child.getAction()));
+                    Action a = r.execute(agentID, fromState);
+                    if (a == null) return false;
+                    return (a.equals(child.getAction()));
                 })
                 .collect(Collectors.toList());
     }
@@ -89,17 +85,35 @@ public class MCTSRuleNode extends MCTSNode {
         return getLegalUnexpandedMoves(state, nextId).isEmpty();
     }
 
-    public Stream<Action> getAllLegalMoves(GameState state, int nextID) {
-        return allRules.stream()
+    public List<Action> getAllLegalMoves(GameState state, int nextID) {
+        // first add the current players hand into the deck - so that any Rule that uses the deck to
+        // represent 'bindable' cards, does include the actual cards in the players hand!
+        Hand h = state.getHand(nextID);
+        Deck deck = state.getDeck();
+        List<Card> cardsAdded = new ArrayList<>();
+        for (int i = 0; i < state.getHandSize(); i++) {
+            if (h.getCard(i) != null) {
+                deck.add(h.getCard(i));
+                cardsAdded.add(h.getCard(i));
+            }
+        }
+
+        List<Action> retValue = allRules.stream()
                 .map(r -> r.execute(nextID, state))
                 .filter(Objects::nonNull)
-                .filter(a -> a.isLegal(nextID, state))
-                .distinct();
+                .filter(p -> p.isLegal(nextID, state))
+                .distinct()
+                .collect(Collectors.toList());
+
+        // then remove the cards again
+        cardsAdded.forEach(deck::remove);
+
+        return retValue;
     }
 
     @Override
     public List<Action> getLegalUnexpandedMoves(GameState state, int nextId) {
-        return getAllLegalMoves(state, nextId)
+        return getAllLegalMoves(state, nextId).stream()
                 .filter(a -> !containsChild(a))
                 .collect(Collectors.toList());
     }

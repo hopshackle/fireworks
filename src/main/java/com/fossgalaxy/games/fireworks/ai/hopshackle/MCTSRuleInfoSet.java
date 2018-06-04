@@ -62,70 +62,7 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
     }
 
-
-    @Override
-    public Action doMove(int agentID, GameState state) {
-        long finishTime = System.currentTimeMillis() + timeLimit;
-
-        MCTSRuleNode root = (MCTSRuleNode) createNode(null, (agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), null, state);
-
-        logDebugGameState(state, agentID);
-
-//        for (int round = 0; round < roundLength; round++) {
-        while (System.currentTimeMillis() < finishTime) {
-            //find a leaf node
-            GameState currentState = state.getCopy();
-            IterationObject iterationObject = new IterationObject(agentID);
-
-            handDeterminiser = new HandDeterminiser(currentState, agentID);
-
-            MCTSNode current = select(root, currentState, iterationObject);
-            // reset to known hand values before rollout
-            handDeterminiser.reset((current.getAgent() + 1) % currentState.getPlayerCount(), currentState);
-            int score = rollout(currentState, current);
-            current.backup(score);
-            if (calcTree) {
-                System.out.println(root.printD3());
-            }
-        }
-
-        if (logger.isInfoEnabled()) {
-            for (MCTSNode level1 : root.getChildren()) {
-                logger.info("rollout {} moves: max: {}, min: {}, avg: {}, N: {} ", level1.getAction(), level1.rolloutMoves.getMax(), level1.rolloutMoves.getMin(), level1.rolloutMoves.getMean(), level1.rolloutMoves.getN());
-                logger.info("rollout {} scores: max: {}, min: {}, avg: {}, N: {} ", level1.getAction(), level1.rolloutScores.getMax(), level1.rolloutScores.getMin(), level1.rolloutScores.getMean(), level1.rolloutScores.getN());
-            }
-        }
-
-        if (logger.isTraceEnabled()) {
-            logger.trace("next player's moves considerations: ");
-            for (MCTSNode level1 : root.getChildren()) {
-                logger.trace("{}'s children", level1.getAction());
-                level1.printChildren();
-            }
-        }
-
-        Action chosenOne = root.getBestNode().getAction();
-        if (logger.isTraceEnabled()) {
-            logger.trace("Move Chosen by {} was {}", agentID, chosenOne);
-            root.printChildren();
-        }
-
-        if (stateGatherer != null) {
-            List<Rule> rulesTriggered = root.getRulesForChild(root.getBestNode(), state, agentID);
-            ((StateGathererWithTarget) stateGatherer).storeData(state, agentID, rulesTriggered);
-        }
-
-        /*
-        if (this instanceof MCTSInfoSetPolicy) {
-            Action rolloutAction = ((MCTSInfoSetPolicy) this).selectActionForRollout(state, agentID);
-            System.out.println(String.format("Player %d: MCTS choice is %s, with rollout %s", agentID, chosenOne.toString(), rolloutAction.toString()));
-        }
-        */
-        return chosenOne;
-    }
-
-    @Override
-    public void gatherStateData(boolean flag) {
+    public void gatherStateDataWithTarget(boolean flag) {
         if (flag) {
             stateGatherer = new StateGathererWithTarget();
         } else {

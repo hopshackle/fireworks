@@ -86,7 +86,7 @@ public class TrainQFunction {
                         .weightInit(WeightInit.XAVIER)
                         .activation(Activation.TANH)
                         .build())
-                .layer(1, new OutputLayer.Builder(LossFunctions.LossFunction.MSE)
+                .layer(1, new OutputLayer.Builder(LossFunctions.LossFunction.COSINE_PROXIMITY)
                         .weightInit(WeightInit.XAVIER)
                         .activation(Activation.IDENTITY)
                         .nIn(hiddenNeurons).nOut(numberOfRules).build())

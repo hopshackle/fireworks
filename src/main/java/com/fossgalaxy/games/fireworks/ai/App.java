@@ -26,12 +26,12 @@ public class App
         String policy = (args.length < 1) ? "outer" : args[0];
         int numPlayers = (args.length < 2) ? 4 : Integer.valueOf(args[1]);
         int numGames = (args.length < 3) ? 1 : Integer.valueOf(args[2]);
-        boolean gatherData = (args.length < 4) ? false : args[3].equals("true");
+        String dataStrategy = (args.length < 4) ? "none" : args[3];
 
-        runGamesAndLogResults(policy, numPlayers, numGames, gatherData);
+        runGamesAndLogResults(policy, numPlayers, numGames, dataStrategy);
     }
 
-    private static void runGamesAndLogResults(String agentDescriptor, int numPlayers, int numGames, boolean gatherData) {
+    private static void runGamesAndLogResults(String agentDescriptor, int numPlayers, int numGames, String dataStrategy) {
 
         System.out.println("Starting run for " + agentDescriptor + " at " + dateFormat.format(ZonedDateTime.now(ZoneId.of("UTC"))));
 
@@ -48,7 +48,26 @@ public class App
                 Agent a = AgentUtils.buildAgent(agentDescriptor);
                 Player player = new HopshackleAgentPlayer(agentDescriptor, a);
                 if (a instanceof MCTS) {
-                    ((MCTS) a).gatherStateData(gatherData);
+                    MCTS policy = (MCTS) a;
+                    switch (dataStrategy) {
+                        case "none":
+                            break;
+                        case "MC":
+                            StateGathererMonteCarlo sgcm = new StateGathererMonteCarlo();
+                            policy.setStateGatherer(sgcm);
+                            policy.setEndGameProcessor(sgcm);
+                            break;
+                        case "simpleClassifier":
+                            StateGathererWithTarget sgwt = new StateGathererWithTarget();
+                            policy.setStateGatherer(sgwt);
+                            break;
+                        case "rollForwardClassifier":
+                            StateGathererActionClassifier sgac = new StateGathererActionClassifier();
+                            policy.setStateGatherer(sgac);
+                            break;
+                        default:
+                            throw new AssertionError("dataStrategy not recognised: " + dataStrategy);
+                    }
                 }
                 runner.addPlayer(player);
             }

@@ -11,39 +11,39 @@ import java.util.stream.Collectors;
 public class StateGathererWithTarget extends StateGatherer {
 
     public static List<String> allTargets = new ArrayList();
+
     static {
         for (Rule r : MCTSRuleInfoSet.allRules) {
             allTargets.add(r.getClass().getSimpleName());
         }
     }
 
-    public void storeData(GameState gameState, int playerID, List<Rule> rulesTriggered) {
-        Map<String, Double> features = extractFeatures(gameState, playerID);
-        for (Rule r : rulesTriggered) {
-            features.put(r.getClass().getSimpleName(), 1.00 / rulesTriggered.size());
-        }
-        if (logger.isDebugEnabled()) logger.debug(asCSVLine(features));
-        experienceData.add(features);
-    }
+    public void storeData(MCTSNode node, GameState gameState, int playerID) {
+        if (node instanceof MCTSRuleNode) {
+            Map<String, Double> features = extractFeatures(gameState, playerID);
+            MCTSRuleNode ruleNode = (MCTSRuleNode) node;
+            List<Rule> rulesTriggered = ruleNode.getRulesForChild(ruleNode.getBestNode(), gameState, playerID);
 
-    @Override
-    public void onGameOver(double finalScore) {
-
-        try {
-            FileWriter writerCSV = new FileWriter(fileLocation + "/rawData.csv", true);
-            for (Map<String, Double> tuple : experienceData) {
-                String csvLine = asCSVLine(tuple);
-                writerCSV.write(csvLine + "\n");
+            for (Rule r : rulesTriggered) {
+                features.put(r.getClass().getSimpleName(), 1.00 / rulesTriggered.size());
             }
-            writerCSV.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+            if (logger.isDebugEnabled()) logger.debug(asCSVLine(features));
+            try {
+                FileWriter writerCSV = new FileWriter(fileLocation + "/StateTargetData.csv", true);
+                String csvLine = asCSVLineWithTargets(features);
+                writerCSV.write(csvLine + "\n");
+                writerCSV.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } else {
+            throw new AssertionError("StateGatherWithTarget requires MCTSRuleNode");
         }
+
     }
 
-    @Override
-    protected String asCSVLine(Map<String, Double> tuple) {
-        String featureString = super.asCSVLine(tuple);
+    protected String asCSVLineWithTargets(Map<String, Double> tuple) {
+        String featureString = asCSVLine(tuple);
         String targetString = allTargets.stream()
                 .map(k -> tuple.getOrDefault(k, 0.00))
                 .map(d -> String.format("%.3f", d))

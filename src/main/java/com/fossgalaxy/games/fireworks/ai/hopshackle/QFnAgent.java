@@ -5,6 +5,8 @@ import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.GameState;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
+import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
+import com.fossgalaxy.games.fireworks.state.actions.PlayCard;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -14,6 +16,8 @@ import org.nd4j.linalg.dataset.api.preprocessor.serializer.StandardizeSerializer
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.javatuples.*;
+
+import java.security.DigestInputStream;
 import java.util.*;
 import java.util.stream.*;
 
@@ -66,26 +70,43 @@ public class QFnAgent implements Agent {
             logger.debug(logMessage);
         }
 
-        Map<Action, List<Pair<Action, Double>>> validActionDetails = MCTSRuleInfoSet.allRules.stream()
+        List<Pair<Action, Double>> actionsAndValues = MCTSRuleInfoSet.allRules.stream()
                 .map(r -> new Pair<>(r.execute(agentID, gameState), ruleValues[MCTSRuleInfoSet.allRules.indexOf(r)]))
+                .collect(Collectors.toList());
+
+        Map<Action, List<Pair<Action, Double>>> validActionDetails = actionsAndValues.stream()
                 .filter(p -> p.getValue0() != null)
-                .filter(p -> p.getValue0().isLegal(agentID, gameState))
+                .filter(p -> {
+                    // this section should use Action.isLegal(). But that is broken for Play and Discard
+                    if (p.getValue0() instanceof PlayCard) {
+                        int slot = ((PlayCard) p.getValue0()).slot;
+                        return gameState.getHand(agentID).hasCard(slot);
+                    } else if (p.getValue0() instanceof DiscardCard) {
+                        int slot = ((DiscardCard) p.getValue0()).slot;
+                        return gameState.getHand(agentID).hasCard(slot) && gameState.getInfomation() != gameState.getStartingInfomation();
+                    } else {
+                        return gameState.getInfomation() != 0;
+                    }
+                })
                 .collect(Collectors.groupingBy(Pair::getValue0));
 
         double[] actionValues = new double[validActionDetails.size()];
         Action[] actions = new Action[validActionDetails.size()];
         int count = 0;
+        double largestValue = Double.NEGATIVE_INFINITY;
         for (Action key : validActionDetails.keySet()) {
             double sum = 0.00;
             for (Pair<Action, Double> p : validActionDetails.get(key))
                 sum += p.getValue1();
+            if (sum > largestValue) largestValue = sum;
             actionValues[count] = sum;
             actions[count] = key;
             count++;
         }
 
+        final double LV = largestValue;
         List<Double> temppdf = Arrays.stream(actionValues)
-                .mapToObj(v -> Math.exp(v / temperature))
+                .mapToObj(v -> Math.exp((v - LV) / temperature))
                 .collect(Collectors.toList());
 
         double total = temppdf.stream().reduce(0.0, Double::sum);
@@ -115,11 +136,18 @@ public class QFnAgent implements Agent {
             }
             cdfRoll -= pdf.get(i);
         }
+        String logMessage = IntStream.range(0, actions.length)
+                .filter(i -> pdf.get(i) > 0.00001)
+                .mapToObj(i -> String.format("\nAction: %s\tValue: %2.2f\tProb: %.2f",
+                        actions[i].toString(), actionValues[i], pdf.get(i)))
+                .collect(Collectors.joining());
+        System.out.println(logMessage);
         throw new AssertionError("Should not be able to reach this point");
     }
 
     private double[] valueState(GameState state, int agentID) {
-        INDArray featureRepresentation = StateGatherer.extractFeaturesAsNDArray(state, null, agentID);
+        Map<String, Double> features = StateGatherer.extractFeatures(state, agentID);
+        INDArray featureRepresentation = StateGatherer.featuresToNDArray(features);
         if (debug) {
             logger.debug(featureRepresentation.toString());
         }

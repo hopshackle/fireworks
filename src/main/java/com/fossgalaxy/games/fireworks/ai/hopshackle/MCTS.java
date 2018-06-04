@@ -11,6 +11,7 @@ import com.fossgalaxy.games.fireworks.state.Deck;
 import com.fossgalaxy.games.fireworks.state.GameState;
 import com.fossgalaxy.games.fireworks.state.Hand;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
+import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
 import com.fossgalaxy.games.fireworks.state.events.GameEvent;
 import com.fossgalaxy.games.fireworks.utils.DebugUtils;
 import org.slf4j.Logger;
@@ -36,6 +37,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
     protected final Random random;
     protected final Logger logger = LoggerFactory.getLogger(MCTS.class);
     protected StateGatherer stateGatherer;
+    protected HasGameOverProcessing endGameProcessor;
     protected final boolean calcTree = false;
 
     /**
@@ -85,21 +87,16 @@ public class MCTS implements Agent, HasGameOverProcessing {
         return root;
     }
 
-    public void gatherStateData(boolean flag) {
-        if (flag) {
-            stateGatherer = new StateGatherer();
-        } else {
-            stateGatherer = null;
-        }
+    public void setStateGatherer(StateGatherer sg) {
+        stateGatherer = sg;
+    }
+    public void setEndGameProcessor(HasGameOverProcessing egp) {
+        endGameProcessor = egp;
     }
 
     @Override
     public Action doMove(int agentID, GameState state) {
         long finishTime = System.currentTimeMillis() + timeLimit;
-
-        if (stateGatherer != null) {
-            stateGatherer.storeData(state, agentID);
-        }
 
         MCTSNode root = createNode(null, (agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), null, state);
         Map<Integer, List<Card>> possibleCards = DeckUtils.bindCard(agentID, state.getHand(agentID), state.getDeck().toList());
@@ -152,6 +149,11 @@ public class MCTS implements Agent, HasGameOverProcessing {
             logger.trace("Move Chosen by {} was {}", agentID, chosenOne);
             root.printChildren();
         }
+
+        if (stateGatherer != null) {
+            stateGatherer.storeData(root, state, agentID);
+        }
+
         return chosenOne;
     }
 
@@ -274,6 +276,13 @@ public class MCTS implements Agent, HasGameOverProcessing {
 
         List<Action> listAction = new ArrayList<>(legalActions);
         Collections.shuffle(listAction);
+        if (listAction.isEmpty()) {
+            for (int i = 0; i < state.getHandSize(); i++) {
+                if (state.getHand(playerID).hasCard(i)) {
+                    return new DiscardCard(i);
+                }
+            }
+        }
 
         return listAction.get(0);
     }
@@ -287,6 +296,10 @@ public class MCTS implements Agent, HasGameOverProcessing {
         while (!state.isGameOver() && moves < rolloutDepth) {
             Action action = selectActionForRollout(state, playerID);
             List<GameEvent> events = action.apply(playerID, state);
+            if (logger.isTraceEnabled()) {
+                logger.trace(String.format("Player %d, Rollout: %s", playerID, action));
+                events.forEach(e -> logger.trace(String.format("\t%s", e.toString())));
+            }
             events.forEach(state::addEvent);
             state.tick();
             playerID = (playerID + 1) % state.getPlayerCount();
@@ -308,7 +321,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
 
     @Override
     public void onGameOver(double finalScore) {
-        if (stateGatherer != null)
-            stateGatherer.onGameOver(finalScore);
+        if (endGameProcessor != null)
+            endGameProcessor.onGameOver(finalScore);
     }
 }

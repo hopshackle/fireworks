@@ -2,9 +2,8 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
-import com.fossgalaxy.games.fireworks.state.GameState;
-import com.fossgalaxy.games.fireworks.state.actions.Action;
-import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
+import com.fossgalaxy.games.fireworks.state.*;
+import com.fossgalaxy.games.fireworks.state.actions.*;
 import com.fossgalaxy.games.fireworks.utils.DebugUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +35,26 @@ public class MCTSRuleInfoSetPolicy extends MCTSRuleInfoSet {
     @Override
     protected Action selectActionForRollout(GameState state, int playerID) {
         try {
-            return rolloutPolicy.doMove(playerID, state);
+            // we first need to ensure Player's hand is back in deck
+            Hand myHand = state.getHand(playerID);
+            Deck deck = state.getDeck();
+            int cardsAddedToDeck = 0;
+            for (int i = 0; i < myHand.getSize(); i++) {
+                if (myHand.getCard(i) != null) {
+                    deck.add(myHand.getCard(i));
+                    //                System.out.println("Added " + myHand.getCard(i));
+                    cardsAddedToDeck++;
+                }
+            }
+            // then choose the action
+            Action chosenAction = rolloutPolicy.doMove(playerID, state);
+            // then put their hand back
+            for (int i = 0; i < cardsAddedToDeck; i++) {
+                Card removedCard = deck.getTopCard();
+                //         System.out.println("Removed " + removedCard);
+            }
+
+            return chosenAction;
         } catch (IllegalArgumentException ex) {
             LOG.error("warning, agent failed to make move: {}", ex);
             return super.selectActionForRollout(state, playerID);

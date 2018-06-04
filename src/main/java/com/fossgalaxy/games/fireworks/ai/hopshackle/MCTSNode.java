@@ -2,8 +2,6 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
 import com.fossgalaxy.games.fireworks.state.GameState;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
-import com.fossgalaxy.stats.BasicStats;
-import com.fossgalaxy.stats.StatsSummary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -2,26 +2,22 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.state.*;
-import com.fossgalaxy.games.fireworks.state.actions.Action;
-import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
-import com.fossgalaxy.games.fireworks.state.actions.PlayCard;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import org.nd4j.linalg.api.ndarray.*;
-import org.nd4j.linalg.cpu.nativecpu.*;
-import org.nd4j.linalg.dataset.*;
-import org.slf4j.*;
+import com.fossgalaxy.games.fireworks.state.actions.*;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.cpu.nativecpu.NDArray;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileWriter;
 import java.util.*;
 import java.util.stream.*;
 
-public class StateGatherer {
+public abstract class StateGatherer {
+
+    public abstract void storeData(MCTSNode node, GameState gameState, int playerID);
 
     protected static boolean debug = false;
     protected String fileLocation = "hanabiData";
-    protected GsonBuilder builder = new GsonBuilder();
-    protected Gson gson = builder.create();
     protected static Logger logger = LoggerFactory.getLogger(StateGatherer.class);
 
     public static List<String> allFeatures = new ArrayList();
@@ -42,21 +38,31 @@ public class StateGatherer {
                 allFeatures.add(player + "_DISCARDABLE_" + priority);
             }
         }
-        /*
         allFeatures.add("PLAY_CARD");
         allFeatures.add("PLAY_PLAYABLE");
         allFeatures.add("DISCARD_CARD");
         allFeatures.add("DISCARD_IS_USELESS");
         allFeatures.add("DISCARD_IS_LAST_OF_USEFUL_PAIR");
-        */
     }
 
-    protected List<Map<String, Double>> experienceData = new ArrayList();
+    public static INDArray featuresToNDArray(Map<String, Double> features) {
+        double[] asArray = allFeatures.stream()
+                .mapToDouble(k -> features.getOrDefault(k, 0.00))
+                .toArray();
+        double[][] retValue = new double[1][asArray.length];
+        retValue[0] = asArray;
+        return new NDArray(retValue);
+    }
 
-    public static INDArray extractFeaturesAsNDArray(GameState state, Action action, int agentID) {
-        // TODO: Put the roll forward in hjere as well so it is all in one place
-        // Ah - that would be a problem for QFn, where this is called at the Rule level!
-        Map<String, Double> features = extractFeatures(state, agentID);
+    public static Map<String, Double> extractFeaturesWithRollForward(GameState state, Action action, int agentID) {
+        GameState newState = EvalFnAgent.rollForward(action, agentID, state);
+        Map<String, Double> retValue = extractFeatures(newState, agentID);
+        retValue.putAll(extractActionFeatures(action, state, agentID));
+        return retValue;
+    }
+
+    public static Map<String, Double> extractActionFeatures(Action action, GameState state, int agentID) {
+        Map<String, Double> features = new HashMap<>();
         if (action != null && action instanceof PlayCard) {
             double playable = probabilities(((PlayCard) action).slot, state, agentID)[0];
             features.put("PLAY_CARD", 1.0);
@@ -68,12 +74,7 @@ public class StateGatherer {
             features.put("DISCARD_IS_USELESS", discardable);
             features.put("DISCARD_IS_LAST_OF_USEFUL_PAIR", isSecondOfUseful);
         }
-        double[] asArray = allFeatures.stream()
-                .mapToDouble(k -> features.getOrDefault(k, 0.00))
-                .toArray();
-        double[][] retValue = new double[1][asArray.length];
-        retValue[0] = asArray;
-        return new NDArray(retValue);
+        return features;
     }
 
     public static Map<String, Double> extractFeatures(GameState gameState, int agentID) {
@@ -129,16 +130,6 @@ public class StateGatherer {
                         featurePlayer, maxPlayable[0], maxPlayable[1], maxPlayable[2], maxDiscardable[0], maxDiscardable[1], maxDiscardable[2]));
         }
         return newTuple;
-    }
-
-    public void storeData(GameState gameState, int playerID) {
-        long startTime = System.currentTimeMillis();
-        Map<String, Double> features = extractFeatures(gameState, playerID);
-        if (logger.isDebugEnabled()) logger.debug(asCSVLine(features));
-        experienceData.add(features);
-
-        //   logFile.log(String.format("Total feature analysis time was %d milliseconds", System.currentTimeMillis() - startTime));
-
     }
 
     private static List<Card> getPossibleCards(int slot, GameState state, int playerID) {
@@ -263,33 +254,11 @@ public class StateGatherer {
         return (int) tracker.values().stream().filter(i -> i == 2).count();
     }
 
-
-    public void onGameOver(double finalScore) {
-
-        try {
-            FileWriter writerJSON = new FileWriter(fileLocation + "/rawData.json", true);
-            FileWriter writerCSV = new FileWriter(fileLocation + "/rawData.csv", true);
-            for (Map<String, Double> tuple : experienceData) {
-                String csvLine = asCSVLine(tuple);
-                double scoreGain = finalScore / 25.0 - tuple.get("SCORE");
-                tuple.put("RESULT", scoreGain);
-                String jsonString = gson.toJson(tuple);
-                //           String headerLine = tuple.keySet().stream().collect(Collectors.joining("\n"));
-                //           System.out.println(headerLine);
-                writerJSON.write(jsonString);
-                writerCSV.write(String.format("%.3f\t%s\n", scoreGain, csvLine));
-            }
-            writerJSON.close();
-            writerCSV.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     protected String asCSVLine(Map<String, Double> tuple) {
         return allFeatures.stream()
                 .map(k -> tuple.getOrDefault(k, 0.00))
                 .map(d -> String.format("%.3f", d))
                 .collect(Collectors.joining("\t"));
     }
+
 }
