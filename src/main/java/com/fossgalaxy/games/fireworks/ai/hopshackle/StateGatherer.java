@@ -3,6 +3,9 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.*;
+import com.fossgalaxy.games.fireworks.state.events.CardDrawn;
+import com.fossgalaxy.games.fireworks.state.events.CardReceived;
+import com.fossgalaxy.games.fireworks.state.events.GameEvent;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.cpu.nativecpu.NDArray;
 import org.slf4j.Logger;
@@ -17,7 +20,7 @@ public abstract class StateGatherer {
     public abstract void storeData(MCTSNode node, GameState gameState, int playerID);
 
     protected static boolean debug = false;
-    protected String fileLocation = "hanabiData";
+    protected String fileLocation = "hanabi";
     protected static Logger logger = LoggerFactory.getLogger(StateGatherer.class);
 
     public static List<String> allFeatures = new ArrayList();
@@ -40,9 +43,11 @@ public abstract class StateGatherer {
         }
         allFeatures.add("PLAY_CARD");
         allFeatures.add("PLAY_PLAYABLE");
+        allFeatures.add("PLAY_COMPLETES_COLOUR");
         allFeatures.add("DISCARD_CARD");
         allFeatures.add("DISCARD_IS_USELESS");
         allFeatures.add("DISCARD_IS_LAST_OF_USEFUL_PAIR");
+        allFeatures.add("DISCARD_POINTS_FOREGONE");
     }
 
     public static INDArray featuresToNDArray(Map<String, Double> features) {
@@ -64,15 +69,17 @@ public abstract class StateGatherer {
     public static Map<String, Double> extractActionFeatures(Action action, GameState state, int agentID) {
         Map<String, Double> features = new HashMap<>();
         if (action != null && action instanceof PlayCard) {
-            double playable = probabilities(((PlayCard) action).slot, state, agentID)[0];
+            double[] probs = probabilities(((PlayCard) action).slot, state, agentID);
             features.put("PLAY_CARD", 1.0);
-            features.put("PLAY_PLAYABLE", playable);
+            features.put("PLAY_PLAYABLE", probs[0]);
+            features.put("PLAY_COMPLETES_COLOUR", probs[2]);
         } else if (action != null && action instanceof DiscardCard) {
             double discardable = probabilities(((DiscardCard) action).slot, state, agentID)[1];
-            double isSecondOfUseful = lastCardOfUsefulPair(((DiscardCard) action).slot, agentID, state);
+            double[] usefulStats = lastCardOfUsefulPair(((DiscardCard) action).slot, agentID, state);
             features.put("DISCARD_CARD", 1.0);
             features.put("DISCARD_IS_USELESS", discardable);
-            features.put("DISCARD_IS_LAST_OF_USEFUL_PAIR", isSecondOfUseful);
+            features.put("DISCARD_IS_LAST_OF_USEFUL_PAIR", usefulStats[0]);
+            features.put("DISCARD_POINTS_FOREGONE", usefulStats[1]);
         }
         return features;
     }
@@ -132,7 +139,7 @@ public abstract class StateGatherer {
         return newTuple;
     }
 
-    private static List<Card> getPossibleCards(int slot, GameState state, int playerID) {
+    private static Map<Integer, List<Card>> getPossibleCards(GameState state, int playerID) {
         List<Card> possibles = state.getDeck().toList();
         Hand playerHand = state.getHand(playerID);
         IntStream.range(0, playerHand.getSize())
@@ -141,7 +148,7 @@ public abstract class StateGatherer {
                 .forEach(possibles::add);
 
         Map<Integer, List<Card>> possibleCards = DeckUtils.bindBlindCard(playerID, playerHand, possibles);
-        return possibleCards.get(slot);
+        return possibleCards;
     }
 
     private static double[] probabilities(int slot, GameState state, int playerID) {
@@ -152,18 +159,21 @@ public abstract class StateGatherer {
                 .filter(Objects::nonNull)
                 .forEach(possibles::add);
 
-        Map<Integer, List<Card>> possibleCards = DeckUtils.bindBlindCard(playerID, playerHand, possibles);
-
+        Map<Integer, List<Card>> possibleCards = getPossibleCards(state, playerID);
         return probabilities(state, possibleCards.get(slot));
     }
 
     private static double[] probabilities(GameState gameState, List<Card> possibleCards) {
         int playable = 0;
         int discardable = 0;
+        int completesColour = 0;
         for (Card c : possibleCards) {
-            if (gameState.getTableValue(c.colour) == c.value - 1)
+            if (gameState.getTableValue(c.colour) == c.value - 1) {
                 playable++;
-            else if (gameState.getTableValue(c.colour) >= c.value)
+                if (c.value == 5 || allCardsDiscarded(c.value + 1, c.colour, gameState.getDiscards())) {
+                    completesColour++;
+                }
+            } else if (gameState.getTableValue(c.colour) >= c.value)
                 discardable++;
             else if (c.value > 2 && allCardsDiscarded(c.value - 1, c.colour, gameState.getDiscards()))
                 discardable++;
@@ -173,16 +183,17 @@ public abstract class StateGatherer {
                 discardable++;
         }
         double totalCards = possibleCards.size();
-        double[] retValue = new double[2];
+        double[] retValue = new double[3];
         retValue[0] = playable / totalCards;
         retValue[1] = discardable / totalCards;
+        retValue[2] = completesColour / totalCards;
         return retValue;
     }
 
-    private static double lastCardOfUsefulPair(int slot, int player, GameState state) {
+    private static double[] lastCardOfUsefulPair(int slot, int player, GameState state) {
         double numberOfSuchCards = 0.0;
-
-        List<Card> possibleCards = getPossibleCards(slot, state, player);
+        double pointsForegone = 0.0;
+        List<Card> possibleCards = getPossibleCards(state, player).get(slot);
         for (Card c : possibleCards) {
             if (state.getTableValue(c.colour) >= c.value) {
                 // not useful (discardable)
@@ -201,12 +212,23 @@ public abstract class StateGatherer {
                     long inDiscard = state.getDiscards().stream()
                             .filter(card -> card.value == c.value && card.colour == c.colour)
                             .collect(Collectors.counting());
-                    if (inDiscard + 1 == numberOfType[c.value])
+                    if (inDiscard + 1 == numberOfType[c.value]) {
                         numberOfSuchCards += 1.0;
+                        pointsForegone += 1.0; // we lose one point for this...and then possibly more
+                        for (int v = c.value + 1; v <= 5; v++) {
+                            if (!allCardsDiscarded(v, c.colour, state.getDiscards())) {
+                                pointsForegone += 1.0;
+                            } else {
+                                // we top once we find all of a number having been discarded
+                                break;
+                                // as soon as we hit a number that has been completely discarded, we stop
+                            }
+                        }
+                    }
                 }
             }
         }
-        return numberOfSuchCards / possibleCards.size();
+        return new double[]{numberOfSuchCards / possibleCards.size(), pointsForegone / possibleCards.size()};
     }
 
     private static boolean allCardsDiscarded(int value, CardColour colour, Collection<Card> discardPile) {
@@ -259,6 +281,39 @@ public abstract class StateGatherer {
                 .map(k -> tuple.getOrDefault(k, 0.00))
                 .map(d -> String.format("%.3f", d))
                 .collect(Collectors.joining("\t"));
+    }
+
+    /*
+    Returns the number of Moves Left, based on being called just before playerID takes their turn
+     */
+    public static int movesLeft(GameState state, int playerID) {
+        long cardsNotInHandThatAreInDeck = IntStream.range(0, state.getHandSize())
+                .filter(i -> {
+                    Hand h = state.getHand(playerID);
+                    return h.getCard(i) == null && h.hasCard(i);
+                })
+                .count();
+
+        if (state.getDeck().getCardsLeft() - cardsNotInHandThatAreInDeck > 0) return state.getPlayerCount();
+        List<GameEvent> history = state.getHistory();
+        for (int i = history.size() - 1; i >= 0; i--) {
+            GameEvent e = history.get(i);
+            if (e instanceof CardDrawn) {
+                // "player %s draw card %s %d in slot %d"
+                // and a huge hack to extarct the playerID from the string representation
+                // as it's a private field!
+                int playerWhoDrew = Integer.valueOf(e.toString().substring(7, 8));
+                // if the next player, then everyone has a turn left
+                // if playerID == playerWhoDrew, then this is the last turn (so 1 move left)
+                return (state.getPlayerCount() - playerID + playerWhoDrew) % state.getPlayerCount() + 1;
+            } else if (e instanceof CardReceived) {
+                CardReceived event = (CardReceived)e;
+                if (event.isReceived() && event.isVisibleTo(playerID))
+                    return 1;
+                // in this case, we drew the last card, so this is our last move
+            }
+        }
+        throw new AssertionError("Should not be able to reach this");
     }
 
 }

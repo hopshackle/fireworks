@@ -98,6 +98,13 @@ public class MCTS implements Agent, HasGameOverProcessing {
     public Action doMove(int agentID, GameState state) {
         long finishTime = System.currentTimeMillis() + timeLimit;
 
+        int movesLeft = StateGatherer.movesLeft(state, agentID);
+        if (movesLeft != state.getPlayerCount()) {
+            // we are in the endGame, but this is not recorded within state
+        } else {
+            movesLeft = Integer.MAX_VALUE;
+        }
+
         MCTSNode root = createNode(null, (agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), null, state);
         Map<Integer, List<Card>> possibleCards = DeckUtils.bindCard(agentID, state.getHand(agentID), state.getDeck().toList());
         List<Integer> bindOrder = DeckUtils.bindOrder(possibleCards);
@@ -121,8 +128,8 @@ public class MCTS implements Agent, HasGameOverProcessing {
             }
             deck.shuffle();
 
-            MCTSNode current = select(root, currentState, iterationObject);
-            int score = rollout(currentState, current);
+            MCTSNode current = select(root, currentState, iterationObject, movesLeft);
+            int score = rollout(currentState, current, movesLeft - current.getDepth());
             current.backup(score);
             if (calcTree) {
                 System.out.println(root.printD3());
@@ -180,13 +187,16 @@ public class MCTS implements Agent, HasGameOverProcessing {
         }
     }
 
-    protected MCTSNode select(MCTSNode root, GameState state, IterationObject iterationObject) {
+    protected MCTSNode select(MCTSNode root, GameState state, IterationObject iterationObject, int maxMoves) {
+
+        int movesLeft = maxMoves;
         MCTSNode current = root;
         int treeDepth = calculateTreeDepthLimit(state);
         boolean expandedNode = false;
 
-        while (!state.isGameOver() && current.getDepth() < treeDepth && !expandedNode) {
+        while (!state.isGameOver() && current.getDepth() < treeDepth && !expandedNode && movesLeft > 0) {
             MCTSNode next;
+            movesLeft--;
             if (current.fullyExpanded(state)) {
                 next = current.getUCTNode(state);
             } else {
@@ -207,9 +217,9 @@ public class MCTS implements Agent, HasGameOverProcessing {
             Action action = current.getAction();
             logger.trace("Selected action " + action + " for player " + agent);
             if (action != null) {
+                state.tick();
                 List<GameEvent> events = action.apply(agent, state);
                 events.forEach(state::addEvent);
-                state.tick();
             }
 
             if (iterationObject.isMyGo(agent)) {
@@ -287,13 +297,21 @@ public class MCTS implements Agent, HasGameOverProcessing {
         return listAction.get(0);
     }
 
-    protected int rollout(GameState state, MCTSNode current) {
+    protected int rollout(GameState state, MCTSNode current, int movesLeft) {
 
         int playerID = (current.getAgent() + 1) % state.getPlayerCount();
         // we rollout from current, which records the agent who acted to reach it
         int moves = 0;
+        int movesWithEmptyDeck = 0;
 
-        while (!state.isGameOver() && moves < rolloutDepth) {
+        while (!state.isGameOver() && moves < rolloutDepth && moves < movesLeft) {
+            if (!state.getDeck().hasCardsLeft()) {
+                movesWithEmptyDeck++;
+                if (movesWithEmptyDeck > 4) {
+                    throw new AssertionError("WTF");
+                }
+            }
+            state.tick();
             Action action = selectActionForRollout(state, playerID);
             List<GameEvent> events = action.apply(playerID, state);
             if (logger.isTraceEnabled()) {
@@ -301,7 +319,6 @@ public class MCTS implements Agent, HasGameOverProcessing {
                 events.forEach(e -> logger.trace(String.format("\t%s", e.toString())));
             }
             events.forEach(state::addEvent);
-            state.tick();
             playerID = (playerID + 1) % state.getPlayerCount();
             moves++;
         }

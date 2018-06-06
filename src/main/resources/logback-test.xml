@@ -22,7 +22,7 @@
 
     <!-- we'll log info to both -->
 
-    <root level="DEBUG">
+    <root level="INFO">
         <appender-ref ref="Console"/>
         <appender-ref ref="logFile"/>
     </root>
