@@ -1,7 +1,6 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
-import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.GameState;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
@@ -17,21 +16,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.javatuples.*;
 
-import java.security.DigestInputStream;
 import java.util.*;
 import java.util.stream.*;
 
-public class QFnAgent implements Agent {
+public class ClassifierFnAgent implements Agent {
 
-    private Logger logger = LoggerFactory.getLogger(QFnAgent.class);
+    private Logger logger = LoggerFactory.getLogger(ClassifierFnAgent.class);
     private MultiLayerNetwork model;
     private NormalizerStandardize normalizer;
-    private double temperature = 0.1;
+    private double temperature;
     private boolean debug = true;
     private Random rand = new Random(47);
 
-    @AgentConstructor("QFn")
-    public QFnAgent(String modelLocation) {
+    @AgentConstructor("classFn")
+    public ClassifierFnAgent(String modelLocation, double temp) {
+        temperature = temp;
         //Load the model
         try {
             model = ModelSerializer.restoreMultiLayerNetwork(modelLocation);
@@ -44,7 +43,7 @@ public class QFnAgent implements Agent {
         }
     }
 
-    public QFnAgent(MultiLayerNetwork model, NormalizerStandardize normalizer) {
+    public ClassifierFnAgent(MultiLayerNetwork model, NormalizerStandardize normalizer) {
         this.model = model;
         this.normalizer = normalizer;
     }
@@ -55,6 +54,53 @@ public class QFnAgent implements Agent {
             1) Determine which Rule to trigger
             2) Trigger it
          */
+
+        Map<Action, Double> actionValues = getAllActionValues(agentID, gameState);
+
+        final double LV = actionValues.values().stream().mapToDouble(i -> i).max().getAsDouble();
+
+        actionValues.keySet().forEach(
+                k -> {
+                    double newValue = Math.exp((actionValues.get(k) - LV) / temperature);
+                    actionValues.put(k, newValue);
+                }
+        );
+
+        double total = actionValues.values().stream().reduce(0.0, Double::sum);
+
+        actionValues.keySet().forEach(
+                k -> {
+                    double newValue = actionValues.get(k) / total;
+                    actionValues.put(k, newValue);
+                }
+        );
+
+        double cdfRoll = rand.nextDouble();
+
+        if (debug) {
+            String logMessage = actionValues.entrySet().stream()
+                    .filter(e -> e.getValue() > 0)
+                    .map(e -> String.format("\nAction: %s\tProb: %.2f",
+                            e.getKey().toString(), e.getValue()))
+                    .collect(Collectors.joining());
+            logger.debug(logMessage);
+            logger.debug(String.format("Random roll is %.3f", cdfRoll));
+        }
+
+        for (Action a : actionValues.keySet()) {
+            if (cdfRoll <= actionValues.get(a)) {
+                Action chosenAction = a;
+                if (debug) {
+                    logger.debug("Selected action " + a);
+                }
+                return chosenAction;
+            }
+            cdfRoll -= actionValues.get(a);
+        }
+        throw new AssertionError("Should not be able to reach this point");
+    }
+
+    public Map<Action, Double> getAllActionValues(int agentID, GameState gameState) {
 
         int numberOfRules = MCTSRuleInfoSet.allRules.size();
         double[] ruleValues = valueState(gameState, agentID);
@@ -104,48 +150,14 @@ public class QFnAgent implements Agent {
             count++;
         }
 
-        final double LV = largestValue;
-        List<Double> temppdf = Arrays.stream(actionValues)
-                .mapToObj(v -> Math.exp((v - LV) / temperature))
-                .collect(Collectors.toList());
-
-        double total = temppdf.stream().reduce(0.0, Double::sum);
-        List<Double> pdf = temppdf.stream()
-                .map(d -> d / total)
-                .collect(Collectors.toList());
-
-        double cdfRoll = rand.nextDouble();
-
-        if (debug) {
-            String logMessage = IntStream.range(0, actions.length)
-                    .filter(i -> pdf.get(i) > 0.00001)
-                    .mapToObj(i -> String.format("\nAction: %s\tValue: %2.2f\tProb: %.2f",
-                            actions[i].toString(), actionValues[i], pdf.get(i)))
-                    .collect(Collectors.joining());
-            logger.debug(logMessage);
-            logger.debug(String.format("Random roll is %.3f", cdfRoll));
+        Map<Action, Double> retValue = new HashMap<>();
+        for (int i = 0; i < actionValues.length; i++) {
+            retValue.put(actions[i], actionValues[i]);
         }
-
-        for (int i = 0; i < actions.length; i++) {
-            if (cdfRoll <= pdf.get(i)) {
-                Action chosenAction = actions[i];
-                if (debug) {
-                    logger.debug("Selected action " + actions[i]);
-                }
-                return chosenAction;
-            }
-            cdfRoll -= pdf.get(i);
-        }
-        String logMessage = IntStream.range(0, actions.length)
-                .filter(i -> pdf.get(i) > 0.00001)
-                .mapToObj(i -> String.format("\nAction: %s\tValue: %2.2f\tProb: %.2f",
-                        actions[i].toString(), actionValues[i], pdf.get(i)))
-                .collect(Collectors.joining());
-        System.out.println(logMessage);
-        throw new AssertionError("Should not be able to reach this point");
+        return retValue;
     }
 
-    private double[] valueState(GameState state, int agentID) {
+    public double[] valueState(GameState state, int agentID) {
         Map<String, Double> features = StateGatherer.extractFeatures(state, agentID);
         INDArray featureRepresentation = StateGatherer.featuresToNDArray(features);
         if (debug) {

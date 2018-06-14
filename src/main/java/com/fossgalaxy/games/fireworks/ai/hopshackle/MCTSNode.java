@@ -20,6 +20,7 @@ public class MCTSNode {
     protected static final boolean DISCOUNT_ENABLED = false;
 
     protected final double expConst;
+    protected final GameState referenceState;
     protected final Action moveToState;
     protected final int agentId;
     protected final MCTSNode parent;
@@ -37,26 +38,27 @@ public class MCTSNode {
     protected final StatsSummary rolloutMoves;
 
     public MCTSNode(Collection<Action> allUnexpandedActions) {
-        this(null, -1, null, DEFAULT_EXP_CONST, allUnexpandedActions);
+        this(null, -1, null, DEFAULT_EXP_CONST, allUnexpandedActions, null);
     }
 
     public MCTSNode(double expConst, Collection<Action> allUnexpandedActions) {
-        this(null, -1, null, expConst, allUnexpandedActions);
+        this(null, -1, null, expConst, allUnexpandedActions, null);
     }
 
     public MCTSNode(int agentID, Action moveToState, Collection<Action> allUnexpandedActions) {
-        this(null, agentID, moveToState, DEFAULT_EXP_CONST, allUnexpandedActions);
+        this(null, agentID, moveToState, DEFAULT_EXP_CONST, allUnexpandedActions, null);
     }
 
     public MCTSNode(int agentID, Action moveToState, double expConst, Collection<Action> allUnexpandedActions) {
-        this(null, agentID, moveToState, expConst, allUnexpandedActions);
+        this(null, agentID, moveToState, expConst, allUnexpandedActions, null);
     }
 
     public MCTSNode(MCTSNode parent, int agentId, Action moveToState, Collection<Action> allUnexpandedActions) {
-        this(parent, agentId, moveToState, DEFAULT_EXP_CONST, allUnexpandedActions);
+        this(parent, agentId, moveToState, DEFAULT_EXP_CONST, allUnexpandedActions, null);
     }
 
-    public MCTSNode(MCTSNode parent, int agentId, Action moveToState, double expConst, Collection<Action> allUnexpandedActions) {
+    public MCTSNode(MCTSNode parent, int agentId, Action moveToState, double expConst, Collection<Action> allUnexpandedActions, GameState reference) {
+        this.referenceState = reference.getCopy();
         this.expConst = expConst;
         this.parent = parent;
         this.agentId = agentId;
@@ -73,6 +75,8 @@ public class MCTSNode {
 
         assert (parent != null && moveToState != null) || (parent == null && moveToState == null);
     }
+
+
 
     public void addChild(MCTSNode node) {
         allUnexpandedActions.remove(node.getAction());
@@ -266,5 +270,9 @@ public class MCTSNode {
         if (parent != null) {
             parent.backupRollout(moves + 1, score);
         }
+    }
+
+    public GameState getReferenceState() {
+        return referenceState;
     }
 }

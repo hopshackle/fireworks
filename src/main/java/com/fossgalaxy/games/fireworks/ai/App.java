@@ -1,11 +1,8 @@
 package com.fossgalaxy.games.fireworks.ai;
 
-import com.fossgalaxy.games.fireworks.GameStats;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.*;
 import com.fossgalaxy.games.fireworks.players.Player;
 import com.fossgalaxy.games.fireworks.utils.AgentUtils;
-import com.fossgalaxy.stats.BasicStats;
-import com.fossgalaxy.stats.StatsSummary;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -36,7 +33,9 @@ public class App
         System.out.println("Starting run for " + agentDescriptor + " at " + dateFormat.format(ZonedDateTime.now(ZoneId.of("UTC"))));
 
         Random random = new Random();
-        StatsSummary statsSummary = new BasicStats();
+        StatsSummary scoreSummary = new BasicStats();
+        StatsSummary timeSummary = new BasicStats();
+        StatsCollator.clear();
 
         for (int i=0; i<numGames; i++) {
             //         System.out.println("Game " + i + " starting");
@@ -65,6 +64,10 @@ public class App
                             StateGathererActionClassifier sgac = new StateGathererActionClassifier();
                             policy.setStateGatherer(sgac);
                             break;
+                        case "treeRFC":
+                            StateGathererFullTree sgft = new StateGathererFullTree(50);
+                            policy.setStateGatherer(sgft);
+                            break;
                         default:
                             throw new AssertionError("dataStrategy not recognised: " + dataStrategy);
                     }
@@ -73,15 +76,20 @@ public class App
             }
 
             GameStats stats = runner.playGame(random.nextLong());
-            statsSummary.add(stats.score);
-            System.out.println(String.format("Game %3d finished with score of %2d", i, stats.score));
+            scoreSummary.add(stats.score);
+            timeSummary.add((double) stats.time / (double) stats.moves);
+            System.out.println(String.format("Game %3d finished with score of %2d and %.0f ms per move", i, stats.score, (double) stats.time / stats.moves));
         }
 
         //print out the stats
-        System.out.println(String.format("%s: Avg: %f, min: %f, max: %f",
+        System.out.println(String.format("%s: Score Avg: %.2f, min: %.0f, max: %.0f, std err: %.2f, Time per move: %.1f ms",
                 agentDescriptor,
-                statsSummary.getMean(),
-                statsSummary.getMin(),
-                statsSummary.getMax()));
+                scoreSummary.getMean(),
+                scoreSummary.getMin(),
+                scoreSummary.getMax(),
+                scoreSummary.getStdErr(),
+                timeSummary.getMean()));
+
+        System.out.println(StatsCollator.summaryString());
     }
 }

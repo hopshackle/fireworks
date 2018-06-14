@@ -21,13 +21,17 @@ public class StateGathererActionClassifier extends StateGatherer {
         try {
             FileWriter writerCSV = new FileWriter(fileLocation + "/StateData.csv", true);
             for (MCTSNode child : node.children) {
-                double childScore = child.rolloutScores.getMean();
-                double childN = child.rolloutScores.getN();
+                double childScore = child.score;
+                double childN = child.visits;
                 if (childN < 20) continue;
                 double childVar = Math.pow(child.rolloutScores.getStdDev(), 2);
 
+                if (bestVar == 0.0 || childVar == 0.0) continue;
                 double statistic = (bestScore - childScore) / Math.sqrt(bestVar / bestN + childVar / childN);
                 double score = 2.0 * Z.cumulativeProbability(-statistic);
+                if (Double.isNaN(score)) {
+                    throw new AssertionError("Not a Number in calculation");
+                }
                 Map<String, Double> features = extractFeaturesWithRollForward(gameState, child.moveToState, playerID);
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("Action %s has value %.3f\n", child.moveToState, score));

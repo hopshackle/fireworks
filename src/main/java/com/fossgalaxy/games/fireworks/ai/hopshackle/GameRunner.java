@@ -1,6 +1,5 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
-import com.fossgalaxy.games.fireworks.GameStats;
 import com.fossgalaxy.games.fireworks.players.Player;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
@@ -175,6 +174,7 @@ public class GameRunner {
      */
     public GameStats playGame(Long seed) {
         int strikes = 0;
+        long startTime = System.currentTimeMillis();
 
         try {
             assert nPlayers == players.length;
@@ -197,10 +197,12 @@ public class GameRunner {
                 }
             }
             Arrays.stream(players).forEach(Player::onGameOver);
-            return new GameStats(gameID, players.length, state.getScore(), state.getLives(), moves, state.getInfomation(), strikes);
+            return new GameStats(gameID, players.length, state.getScore(), state.getLives(), moves,
+                    state.getInfomation(), strikes, System.currentTimeMillis() - startTime);
         } catch (Exception ex) {
             logger.error("the game went bang", ex);
-            return new GameStats(gameID, players.length, state.getScore(), state.getLives(), moves, state.getInfomation(), 1);
+            return new GameStats(gameID, players.length, state.getScore(), state.getLives(), moves,
+                    state.getInfomation(), 1, System.currentTimeMillis() - startTime);
         }
 
     }

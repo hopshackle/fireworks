@@ -15,27 +15,27 @@ public class MCTSRuleNode extends MCTSNode {
     protected final List<Rule> allRules;
 
     public MCTSRuleNode(List<Rule> possibleRules) {
-        this(null, -1, null, DEFAULT_EXP_CONST, possibleRules);
+        this(null, -1, null, DEFAULT_EXP_CONST, possibleRules, null);
     }
 
     public MCTSRuleNode(double expConst, List<Rule> possibleRules) {
-        this(null, -1, null, expConst, possibleRules);
+        this(null, -1, null, expConst, possibleRules, null);
     }
 
     public MCTSRuleNode(int agentID, Action moveToState, List<Rule> possibleRules) {
-        this(null, agentID, moveToState, DEFAULT_EXP_CONST, possibleRules);
+        this(null, agentID, moveToState, DEFAULT_EXP_CONST, possibleRules, null);
     }
 
     public MCTSRuleNode(int agentID, Action moveToState, double expConst, List<Rule> possibleRules) {
-        this(null, agentID, moveToState, expConst, possibleRules);
+        this(null, agentID, moveToState, expConst, possibleRules, null);
     }
 
     public MCTSRuleNode(MCTSRuleNode parent, int agentId, Action moveToState, List<Rule> possibleRules) {
-        this(parent, agentId, moveToState, DEFAULT_EXP_CONST, possibleRules);
+        this(parent, agentId, moveToState, DEFAULT_EXP_CONST, possibleRules, null);
     }
 
-    public MCTSRuleNode(MCTSRuleNode parent, int agentId, Action moveToState, double expConst, List<Rule> possibleRules) {
-        super(parent, agentId, moveToState, expConst, new ArrayList<>());
+    public MCTSRuleNode(MCTSRuleNode parent, int agentId, Action moveToState, double expConst, List<Rule> possibleRules, GameState reference) {
+        super(parent, agentId, moveToState, expConst, new ArrayList<>(), reference);
         allRules = possibleRules;
         assert (parent != null && moveToState != null) || (parent == null && moveToState == null);
     }

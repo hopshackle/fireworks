@@ -25,13 +25,14 @@ public class EvalFnAgent implements Agent {
     private Logger logger = LoggerFactory.getLogger(EvalFnAgent.class);
     private MultiLayerNetwork model;
     private NormalizerStandardize normalizer;
-    private double temperature = 0.1;
+    private double temperature;
     private boolean debug = true;
     private Random rand = new Random(47);
 
     @AgentConstructor("evalFn")
-    public EvalFnAgent(String modelLocation) {
+    public EvalFnAgent(String modelLocation, double temp) {
         //Load the model
+        temperature = temp;
         try {
             model = ModelSerializer.restoreMultiLayerNetwork(modelLocation);
             NormalizerSerializer ns = new NormalizerSerializer();
@@ -55,15 +56,11 @@ public class EvalFnAgent implements Agent {
             2) For each roll the state forward, extract features, and value it using the model
             3) Choose an action based on a Boltzmann distribution
          */
+        Map<Action, Double> actionValues = getAllActionValues(agentID, gameState);
 
-        List<Action> actionsToBeConsidered = getPossibleActions(agentID, gameState);
-        List<Double> actionValues = actionsToBeConsidered.stream()
-                .map(a -> new Pair(a, rollForward(a, agentID, gameState)))
-                .map(p -> valueState(((GameState)p.getValue1()), ((Action)p.getValue0()), agentID))
-                .collect(Collectors.toList());
-
-        List<Double> temppdf = actionValues.stream()
-                .map(v -> Math.exp(v / temperature))
+        List<Action> actionsToBeConsidered = actionValues.keySet().stream().collect(Collectors.toList());
+        List<Double> temppdf = actionsToBeConsidered.stream()
+                .map(k -> Math.exp(actionValues.get(k) / temperature))
                 .collect(Collectors.toList());
 
         double total = temppdf.stream().reduce(0.0, Double::sum);
@@ -99,6 +96,8 @@ public class EvalFnAgent implements Agent {
                 .map(r -> r.execute(agentID, state))
                 .filter(p -> {
                     // this section should use Action.isLegal(). But that is broken for Play and Discard
+                    // as it uses hand.getCard() != null, which will always be true for the acting player
+                    // when we use the state provided by GameRunner
                     if (p instanceof PlayCard) {
                         int slot = ((PlayCard) p).slot;
                         return state.getHand(agentID).hasCard(slot);
@@ -115,7 +114,7 @@ public class EvalFnAgent implements Agent {
     }
 
     public static GameState rollForward(Action action, int agentID, GameState state) {
-        if(action instanceof PlayCard || action instanceof DiscardCard) return state;
+        if (action instanceof PlayCard || action instanceof DiscardCard) return state;
         // we don't roll forward Play or Discard actions, as that introduces determinised info
         // instead we cater for this in the feature representation
         GameState stateCopy = state.getCopy();
@@ -123,9 +122,10 @@ public class EvalFnAgent implements Agent {
         return stateCopy;
     }
 
-    private double valueState(GameState state, Action action, int agentID) {
+    public double valueState(GameState state, Optional<Action> action, int agentID) {
         Map<String, Double> features = StateGatherer.extractFeatures(state, agentID);
-        features.putAll(StateGatherer.extractActionFeatures(action, state, agentID));
+        if (action.isPresent())
+            features.putAll(StateGatherer.extractActionFeatures(action.get(), state, agentID));
         INDArray featureRepresentation = StateGatherer.featuresToNDArray(features);
         if (debug) {
             logger.debug(featureRepresentation.toString());
@@ -133,5 +133,18 @@ public class EvalFnAgent implements Agent {
         normalizer.transform(featureRepresentation);
         INDArray output = model.output(featureRepresentation);
         return output.getDouble(0);
+    }
+
+
+    public Map<Action, Double> getAllActionValues(int agentID, GameState gameState) {
+        List<Action> actionsToBeConsidered = getPossibleActions(agentID, gameState);
+        List<Double> actionValues = actionsToBeConsidered.stream()
+                .map(a -> new Pair(a, rollForward(a, agentID, gameState)))
+                .map(p -> valueState(((GameState) p.getValue1()), Optional.ofNullable((Action) p.getValue0()), agentID))
+                .collect(Collectors.toList());
+        Map<Action, Double> retValue = new HashMap<>();
+        IntStream.range(0, actionsToBeConsidered.size())
+                .forEach(i -> retValue.put(actionsToBeConsidered.get(i), actionValues.get(i)));
+        return retValue;
     }
 }

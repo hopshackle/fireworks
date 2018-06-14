@@ -8,6 +8,8 @@ import com.fossgalaxy.games.fireworks.utils.DebugUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
+
 /**
  * A version of the MCTS agent that replaces the random rollout with policy based rollouts.
  */
@@ -23,6 +25,11 @@ public class MCTSRuleInfoSetPolicy extends MCTSRuleInfoSet {
     public MCTSRuleInfoSetPolicy(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         this.rolloutPolicy = rollout;
+        // TODO: Parameterise this more elegantly in future
+        if (rollout instanceof ClassifierFnAgent)
+            expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.of((ClassifierFnAgent) rollout), Optional.empty());
+        if (rollout instanceof EvalFnAgent)
+            expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.empty(), Optional.of((EvalFnAgent) rollout));
     }
 
     /**

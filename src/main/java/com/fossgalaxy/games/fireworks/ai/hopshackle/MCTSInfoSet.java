@@ -50,7 +50,7 @@ public class MCTSInfoSet extends MCTS {
     @Override
     public Action doMove(int agentID, GameState state) {
         long finishTime = System.currentTimeMillis() + timeLimit;
-
+        int deepestNode = 0, allNodeDepths = 0, rollouts = 0;
         int movesLeft = StateGatherer.movesLeft(state, agentID);
         if (movesLeft != state.getPlayerCount()) {
             // we are in the endGame, but this is not recorded within state
@@ -65,6 +65,7 @@ public class MCTSInfoSet extends MCTS {
 //        for (int round = 0; round < roundLength; round++) {
         while (System.currentTimeMillis() < finishTime) {
             //find a leaf node
+            rollouts++;
             GameState currentState = state.getCopy();
             IterationObject iterationObject = new IterationObject(agentID);
 
@@ -73,7 +74,12 @@ public class MCTSInfoSet extends MCTS {
             MCTSNode current = select(root, currentState, iterationObject, movesLeft);
             // reset to known hand values before rollout
             handDeterminiser.reset((current.getAgent() + 1) % currentState.getPlayerCount(), currentState);
-            int score = rollout(currentState, current, movesLeft - current.getDepth());
+
+            if (current.getDepth() > deepestNode) deepestNode = current.getDepth();
+            allNodeDepths += current.getDepth();
+            if (nodeExpanded) nodesExpanded++;
+
+            double score = rollout(currentState, current, movesLeft - current.getDepth());
             current.backup(score);
             if (calcTree) {
                 System.out.println(root.printD3());
@@ -82,6 +88,7 @@ public class MCTSInfoSet extends MCTS {
 
         if (logger.isInfoEnabled()) {
             for (MCTSNode level1 : root.getChildren()) {
+                logger.info(String.format("Action: %s\tVisits: %d\tScore: %.3f", level1.getAction(), level1.visits, level1.score / level1.visits));
                 logger.info("rollout {} moves: max: {}, min: {}, avg: {}, N: {} ", level1.getAction(), level1.rolloutMoves.getMax(), level1.rolloutMoves.getMin(), level1.rolloutMoves.getMean(), level1.rolloutMoves.getN());
                 logger.info("rollout {} scores: max: {}, min: {}, avg: {}, N: {} ", level1.getAction(), level1.rolloutScores.getMax(), level1.rolloutScores.getMin(), level1.rolloutScores.getMean(), level1.rolloutScores.getN());
             }
@@ -108,9 +115,16 @@ public class MCTSInfoSet extends MCTS {
         */
 
         if (stateGatherer != null) {
-            stateGatherer.storeData(root, state, agentID);
+            if (stateGatherer instanceof StateGathererFullTree) {
+                ((StateGathererFullTree) stateGatherer).processTree(root);
+            } else {
+                stateGatherer.storeData(root, state, agentID);
+            }
         }
-
+        movesMade++;
+        maxTreeDepth += deepestNode;
+        meanTreeDepth += allNodeDepths / (double) rollouts;
+        rolloutN += rollouts;
         return chosenOne;
     }
 
@@ -118,7 +132,7 @@ public class MCTSInfoSet extends MCTS {
     protected MCTSNode select(MCTSNode root, GameState state, IterationObject iterationObject, int movesLeft) {
         MCTSNode current = root;
         int treeDepth = calculateTreeDepthLimit(state);
-        boolean expandedNode = false;
+        nodeExpanded = false;
 
         if (logger.isDebugEnabled()) {
             String logMessage = "All legal moves from root: " +
@@ -129,7 +143,7 @@ public class MCTSInfoSet extends MCTS {
             logger.debug(logMessage);
         }
 
-        while (!state.isGameOver() && current.getDepth() < treeDepth && !expandedNode && movesLeft > 0) {
+        while (!state.isGameOver() && current.getDepth() < treeDepth && !nodeExpanded && movesLeft > 0) {
             MCTSNode next;
             movesLeft--;
             // determinise hand before decision is made
@@ -139,7 +153,7 @@ public class MCTSInfoSet extends MCTS {
                 next = current.getUCTNode(state);
             } else {
                 next = expand(current, state);
-                expandedNode = true;
+                nodeExpanded = true;
                 //            return next;
             }
             if (next == null) {

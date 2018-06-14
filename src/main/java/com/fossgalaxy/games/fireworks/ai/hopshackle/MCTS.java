@@ -23,7 +23,6 @@ import java.util.*;
  * Created by WebPigeon on 09/08/2016.
  */
 public class MCTS implements Agent, HasGameOverProcessing {
-    public static final int DEFAULT_ITERATIONS = 50_000;
     public static final int DEFAULT_ROLLOUT_DEPTH = 18;
     public static final int DEFAULT_TREE_DEPTH_MUL = 1;
     public static final int DEFAULT_TIME_LIMIT = 1000;
@@ -39,6 +38,11 @@ public class MCTS implements Agent, HasGameOverProcessing {
     protected StateGatherer stateGatherer;
     protected HasGameOverProcessing endGameProcessor;
     protected final boolean calcTree = false;
+    protected int movesMade;
+    protected int nodesExpanded;
+    protected boolean nodeExpanded;
+    protected double maxTreeDepth, meanTreeDepth, rolloutN;
+    protected ExpansionPolicy expansionPolicy;
 
     /**
      * Create a default MCTS implementation.
@@ -70,6 +74,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
         this.timeLimit = timeLimit;
         this.C = explorationC;
         this.random = new Random();
+        expansionPolicy = new SimpleNodeExpansion(logger, random);
     }
 
     @AgentBuilderStatic("mctsND")
@@ -77,19 +82,10 @@ public class MCTS implements Agent, HasGameOverProcessing {
         return new MCTS(MCTSNode.DEFAULT_EXP_CONST, MCTS.NO_LIMIT, MCTS.NO_LIMIT, DEFAULT_TIME_LIMIT);
     }
 
-    protected MCTSNode createNode(MCTSNode parent, int previousAgentID, Action moveTo, GameState state) {
-        MCTSNode root = new MCTSNode(
-                parent,
-                previousAgentID,
-                moveTo, C,
-                Utils.generateAllActions((previousAgentID + 1) % state.getPlayerCount(), state.getPlayerCount())
-        );
-        return root;
-    }
-
     public void setStateGatherer(StateGatherer sg) {
         stateGatherer = sg;
     }
+
     public void setEndGameProcessor(HasGameOverProcessing egp) {
         endGameProcessor = egp;
     }
@@ -97,6 +93,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
     @Override
     public Action doMove(int agentID, GameState state) {
         long finishTime = System.currentTimeMillis() + timeLimit;
+        int deepestNode = 0, allNodeDepths = 0, rollouts = 0;
 
         int movesLeft = StateGatherer.movesLeft(state, agentID);
         if (movesLeft != state.getPlayerCount()) {
@@ -113,6 +110,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
 
 //        for (int round = 0; round < roundLength; round++) {
         while (System.currentTimeMillis() < finishTime) {
+            rollouts++;
             //find a leaf node
             GameState currentState = state.getCopy();
             IterationObject iterationObject = new IterationObject(agentID);
@@ -129,7 +127,12 @@ public class MCTS implements Agent, HasGameOverProcessing {
             deck.shuffle();
 
             MCTSNode current = select(root, currentState, iterationObject, movesLeft);
-            int score = rollout(currentState, current, movesLeft - current.getDepth());
+
+            if (current.getDepth() > deepestNode) deepestNode = current.getDepth();
+            allNodeDepths += current.getDepth();
+            if (nodeExpanded) nodesExpanded++;
+
+            double score = rollout(currentState, current, movesLeft - current.getDepth());
             current.backup(score);
             if (calcTree) {
                 System.out.println(root.printD3());
@@ -138,6 +141,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
 
         if (logger.isInfoEnabled()) {
             for (MCTSNode level1 : root.getChildren()) {
+                logger.info(String.format("Action: %s\tVisits: %d\tScore: %.3f", level1.getAction(), level1.visits, level1.score / level1.visits));
                 logger.info("rollout {} moves: max: {}, min: {}, avg: {}, N: {} ", level1.getAction(), level1.rolloutMoves.getMax(), level1.rolloutMoves.getMin(), level1.rolloutMoves.getMean(), level1.rolloutMoves.getN());
                 logger.info("rollout {} scores: max: {}, min: {}, avg: {}, N: {} ", level1.getAction(), level1.rolloutScores.getMax(), level1.rolloutScores.getMin(), level1.rolloutScores.getMean(), level1.rolloutScores.getN());
             }
@@ -158,10 +162,26 @@ public class MCTS implements Agent, HasGameOverProcessing {
         }
 
         if (stateGatherer != null) {
-            stateGatherer.storeData(root, state, agentID);
+            if (stateGatherer instanceof StateGathererFullTree) {
+                ((StateGathererFullTree) stateGatherer).processTree(root);
+            } else {
+                stateGatherer.storeData(root, state, agentID);
+            }
         }
 
+        movesMade++;
+        maxTreeDepth += deepestNode;
+        meanTreeDepth += allNodeDepths / (double) rollouts;
+        rolloutN += rollouts;
         return chosenOne;
+    }
+
+    protected MCTSNode expand(MCTSNode parent, GameState state) {
+        return expansionPolicy.expand(parent, state);
+    }
+
+    protected MCTSNode createNode(MCTSNode parent, int previousAgentID, Action moveTo, GameState state) {
+        return expansionPolicy.createNode(parent, previousAgentID, moveTo, state, C);
     }
 
     protected void logDebugGameState(GameState state, int agentID) {
@@ -188,20 +208,19 @@ public class MCTS implements Agent, HasGameOverProcessing {
     }
 
     protected MCTSNode select(MCTSNode root, GameState state, IterationObject iterationObject, int maxMoves) {
-
         int movesLeft = maxMoves;
         MCTSNode current = root;
         int treeDepth = calculateTreeDepthLimit(state);
-        boolean expandedNode = false;
+        nodeExpanded = false;
 
-        while (!state.isGameOver() && current.getDepth() < treeDepth && !expandedNode && movesLeft > 0) {
+        while (!state.isGameOver() && current.getDepth() < treeDepth && !nodeExpanded && movesLeft > 0) {
             MCTSNode next;
             movesLeft--;
             if (current.fullyExpanded(state)) {
                 next = current.getUCTNode(state);
             } else {
                 next = expand(current, state);
-                expandedNode = true;
+                nodeExpanded = true;
                 //            return next;
             }
             if (next == null) {
@@ -238,48 +257,6 @@ public class MCTS implements Agent, HasGameOverProcessing {
         return (state.getPlayerCount() * treeDepthMul) + 1;
     }
 
-    /**
-     * Select a new action for the expansion node.
-     *
-     * @param state   the game state to travel from
-     * @param agentID the AgentID to use for action selection
-     * @param node    the Node to use for expansion
-     * @return the next action to be added to the tree from this state.
-     */
-    protected Action selectActionForExpand(GameState state, MCTSNode node, int agentID) {
-        Collection<Action> legalActions = node.getLegalUnexpandedMoves(state, agentID);
-        if (legalActions.isEmpty()) {
-            return null;
-        }
-
-        Iterator<Action> actionItr = legalActions.iterator();
-
-        int selected = random.nextInt(legalActions.size());
-        Action curr = actionItr.next();
-        for (int i = 0; i < selected; i++) {
-            curr = actionItr.next();
-        }
-        logger.trace("Selected action " + curr + " for expansion from node:");
-        // node.printChildren();
-        return curr;
-    }
-
-    protected MCTSNode expand(MCTSNode parent, GameState state) {
-        int nextAgentID = (parent.getAgent() + 1) % state.getPlayerCount();
-        Action action = selectActionForExpand(state, parent, nextAgentID);
-        // It is possible it wasn't allowed
-        if (action == null) {
-            return parent;
-        }
-        if (parent.containsChild(action)) {
-            // return the correct node instead
-            return parent.getChild(action);
-        }
-        //XXX we may expand a node which we already visited? :S
-        MCTSNode child = createNode(parent, nextAgentID, action, state);
-        parent.addChild(child);
-        return child;
-    }
 
     protected Action selectActionForRollout(GameState state, int playerID) {
         Collection<Action> legalActions = Utils.generateActions(playerID, state);
@@ -297,7 +274,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
         return listAction.get(0);
     }
 
-    protected int rollout(GameState state, MCTSNode current, int movesLeft) {
+    protected double rollout(GameState state, MCTSNode current, int movesLeft) {
 
         int playerID = (current.getAgent() + 1) % state.getPlayerCount();
         // we rollout from current, which records the agent who acted to reach it
@@ -340,5 +317,13 @@ public class MCTS implements Agent, HasGameOverProcessing {
     public void onGameOver(double finalScore) {
         if (endGameProcessor != null)
             endGameProcessor.onGameOver(finalScore);
+        Map<String, Double> stats = new HashMap<>();
+        stats.put("MOVES", (double) movesMade);
+        if (movesMade == 0) movesMade = 1; // as we never got a turn, so to avoid division by 0.
+        stats.put("MAX_TREE_DEPTH", maxTreeDepth / (double) movesMade);
+        stats.put("MEAN_TREE_DEPTH", meanTreeDepth / (double) movesMade);
+        stats.put("NODES_EXPANDED", nodesExpanded / (double) movesMade);
+        stats.put("ROLLOUTS", rolloutN / (double) movesMade);
+        StatsCollator.addStatistics(stats);
     }
 }
