@@ -33,6 +33,7 @@ public class EvalFnAgent implements Agent {
     public EvalFnAgent(String modelLocation, double temp) {
         //Load the model
         temperature = temp;
+        debug = logger.isDebugEnabled();
         try {
             model = ModelSerializer.restoreMultiLayerNetwork(modelLocation);
             NormalizerSerializer ns = new NormalizerSerializer();

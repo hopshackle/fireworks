@@ -17,6 +17,7 @@ public class MCTSRuleInfoSetFullExpansion extends MCTSRuleInfoSet {
 
     @Override
     protected double rollout(GameState state, MCTSNode current, int movesLeft) {
+        if (state.isGameOver() || movesLeft <= 0) return state.getScore();
         return current.score / current.visits;
     }
 

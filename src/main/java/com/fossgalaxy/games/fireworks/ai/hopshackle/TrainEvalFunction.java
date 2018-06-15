@@ -38,7 +38,7 @@ public class TrainEvalFunction {
     private static double learningRate = 1e-3;
     private static int seed = 147;
     private static int epochs = 30;
-    private static double trainingPercentage = 1.0;
+    private static double trainingPercentage = 0.8;
 
     /*
     Takes a file as an argument, and then uses this to train a simple Neural Network
@@ -110,7 +110,7 @@ public class TrainEvalFunction {
         for (int n = 0; n < epochs; n++) {
             model.fit(iterator);
             double testScore = (testData.size() > 0) ? model.score(testDataSet) : Double.NaN;
-            log.info(String.format("Epoch %3d has error %.3f, and test error %.3f", n, model.score(), testScore));
+            log.info(String.format("Epoch %3d has error %.4f, and test error %.4f", n, model.score(), testScore));
         }
 
         //Save the model

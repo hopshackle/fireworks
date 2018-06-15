@@ -1,6 +1,8 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
+import com.fossgalaxy.games.fireworks.state.Card;
 import com.fossgalaxy.games.fireworks.state.GameState;
+import com.fossgalaxy.games.fireworks.state.Hand;
 
 import java.io.*;
 import java.util.*;
@@ -39,11 +41,34 @@ public class StateGathererFullTree extends StateGatherer {
             if (child.visits >= VISIT_THRESHOLD) {
                 // child node associated with action, and the parent state from which this action was taken
                 // the state on the child is a reference one...so may not be applicable
+
+                // the attached state is likeley to be determinised, which means that
+                // cards in the active player's hand are also in the deck
+                // this is great for probability calculations, but less good for detecting the end of the game
+                // for which we have to check the cards left in deck to estimate (due to issues in the state
+                // that GameRunner sends us).
+                Hand activehand = node.referenceState.getHand(child.agentId);
+                Card[] cards = new Card[activehand.getSize()];
+                for (int i = 0; i < activehand.getSize(); i++) {
+                    if (activehand.hasCard(i)) {
+                        cards[i] = activehand.getCard(i);
+                        activehand.bindCard(i, null);
+                    }
+                }
+
                 if (child.moveToState.isLegal(child.agentId, node.referenceState))
                     storeData(child, node.referenceState, child.agentId);
+
+                // and reset hand
+                for (int i = 0; i < activehand.getSize(); i++) {
+                    if (activehand.hasCard(i)) {
+                        activehand.bindCard(i, cards[i]);
+                    }
+                }
                 // note it is also possible for a child action to be illegal from the reference state
-                // dur to the specific hand-determinization for the active player
+                // due to the specific hand-determinization for the active player
                 processNode(child);
+
             }
         }
     }

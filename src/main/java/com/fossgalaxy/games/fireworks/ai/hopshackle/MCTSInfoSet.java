@@ -4,7 +4,9 @@ import com.fossgalaxy.games.fireworks.ai.mcts.IterationObject;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.Card;
+import com.fossgalaxy.games.fireworks.state.Deck;
 import com.fossgalaxy.games.fireworks.state.GameState;
+import com.fossgalaxy.games.fireworks.state.Hand;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
 import com.fossgalaxy.games.fireworks.state.events.GameEvent;
 import com.fossgalaxy.games.fireworks.utils.DebugUtils;
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
 public class MCTSInfoSet extends MCTS {
 
     protected HandDeterminiser handDeterminiser;
+    protected int rollouts;
 
     /**
      * Create a default MCTS implementation.
@@ -50,7 +53,8 @@ public class MCTSInfoSet extends MCTS {
     @Override
     public Action doMove(int agentID, GameState state) {
         long finishTime = System.currentTimeMillis() + timeLimit;
-        int deepestNode = 0, allNodeDepths = 0, rollouts = 0;
+        int deepestNode = 0, allNodeDepths = 0;
+        rollouts = 0;
         int movesLeft = StateGatherer.movesLeft(state, agentID);
         if (movesLeft != state.getPlayerCount()) {
             // we are in the endGame, but this is not recorded within state
@@ -80,6 +84,7 @@ public class MCTSInfoSet extends MCTS {
             if (nodeExpanded) nodesExpanded++;
 
             double score = rollout(currentState, current, movesLeft - current.getDepth());
+            if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
             current.backup(score);
             if (calcTree) {
                 System.out.println(root.printD3());
@@ -89,8 +94,10 @@ public class MCTSInfoSet extends MCTS {
         if (logger.isInfoEnabled()) {
             for (MCTSNode level1 : root.getChildren()) {
                 logger.info(String.format("Action: %s\tVisits: %d\tScore: %.3f", level1.getAction(), level1.visits, level1.score / level1.visits));
-                logger.info("rollout {} moves: max: {}, min: {}, avg: {}, N: {} ", level1.getAction(), level1.rolloutMoves.getMax(), level1.rolloutMoves.getMin(), level1.rolloutMoves.getMean(), level1.rolloutMoves.getN());
-                logger.info("rollout {} scores: max: {}, min: {}, avg: {}, N: {} ", level1.getAction(), level1.rolloutScores.getMax(), level1.rolloutScores.getMin(), level1.rolloutScores.getMean(), level1.rolloutScores.getN());
+                if (level1.rolloutScores.getN() > 0) {
+                    logger.info("rollout {} moves: max: {}, min: {}, avg: {}, N: {} ", level1.getAction(), level1.rolloutMoves.getMax(), level1.rolloutMoves.getMin(), level1.rolloutMoves.getMean(), level1.rolloutMoves.getN());
+                    logger.info("rollout {} scores: max: {}, min: {}, avg: {}, N: {} ", level1.getAction(), level1.rolloutScores.getMax(), level1.rolloutScores.getMin(), level1.rolloutScores.getMean(), level1.rolloutScores.getN());
+                }
             }
         }
 
@@ -134,28 +141,49 @@ public class MCTSInfoSet extends MCTS {
         int treeDepth = calculateTreeDepthLimit(state);
         nodeExpanded = false;
 
-        if (logger.isDebugEnabled()) {
-            String logMessage = "All legal moves from root: " +
-                    ((MCTSRuleNode) root).getAllLegalMoves(state, (root.agentId + 1) % state.getPlayerCount())
-                            .stream()
-                            .map(Action::toString)
-                            .collect(Collectors.joining("\t"));
-            logger.debug(logMessage);
-        }
-
         while (!state.isGameOver() && current.getDepth() < treeDepth && !nodeExpanded && movesLeft > 0) {
             MCTSNode next;
             movesLeft--;
             // determinise hand before decision is made
             int agentAboutToAct = (current.getAgent() + 1) % state.getPlayerCount();
             handDeterminiser.determiniseHandFor(agentAboutToAct, state);
+
+            // put active hand into deck for decision making
+            Hand myHand = state.getHand(agentAboutToAct);
+            Deck deck = state.getDeck();
+            int cardsAddedToDeck = 0;
+            for (int i = 0; i < myHand.getSize(); i++) {
+                if (myHand.getCard(i) != null) {
+                    deck.add(myHand.getCard(i));
+                    cardsAddedToDeck++;
+                }
+            }
+
+            if (rollouts == 0 && logger.isDebugEnabled()) {
+                // we do this here to be within the hand/deck fiddle
+                String logMessage = "All legal moves from root: " +
+                        ((MCTSRuleNode) root).getAllLegalMoves(state, (root.agentId + 1) % state.getPlayerCount())
+                                .stream()
+                                .map(Action::toString)
+                                .collect(Collectors.joining("\t"));
+                logger.debug(logMessage);
+            }
+
             if (current.fullyExpanded(state)) {
                 next = current.getUCTNode(state);
             } else {
+                if (current == root && rollouts > 20) {
+                    int sg = 0;
+                }
                 next = expand(current, state);
                 nodeExpanded = true;
                 //            return next;
             }
+
+            for (int i = 0; i < cardsAddedToDeck; i++) {
+                deck.getTopCard();
+            }
+
             if (next == null) {
                 //XXX if all follow on states explored so far are null, we are now a leaf node
                 return current;

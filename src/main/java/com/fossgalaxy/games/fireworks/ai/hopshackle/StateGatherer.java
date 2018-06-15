@@ -31,12 +31,11 @@ public abstract class StateGatherer {
         allFeatures.add("INFORMATION");
         allFeatures.add("LIVES");
         allFeatures.add("DECK_LEFT");
-        allFeatures.add("FIVES_DISCARDED");
-        allFeatures.add("FOURS_DISCARDED");
         for (int player = 0; player < 5; player++) {
             allFeatures.add(player + "_PLAYABLE");
             allFeatures.add(player + "_PLAYABLE_PLUS_ONE");
             allFeatures.add(player + "_DISCARDABLE");
+            allFeatures.add(player + "_INFORMATION");
         }
         allFeatures.add("PLAY_CARD");
         allFeatures.add("PLAY_PLAYABLE");
@@ -95,9 +94,7 @@ public abstract class StateGatherer {
         newTuple.put("LIVES", gameState.getLives() / (double) gameState.getStartingLives());
         double cardsInStartingDeck = 50 - gameState.getPlayerCount() * gameState.getHandSize();
         // size of deck included the active player's cards
-        newTuple.put("DECK_LEFT", (gameState.getDeck().getCardsLeft() - gameState.getHandSize()) / cardsInStartingDeck);
-        newTuple.put("FIVES_DISCARDED", numberOfSuitsWithDiscardedFive(gameState) / 5.0);
-        newTuple.put("FOURS_DISCARDED", numberOfSuitsWithDiscardedFour(gameState) / 5.0);
+        newTuple.put("DECK_LEFT", (gameState.getDeck().getCardsLeft() - cardsNotInHandThatAreInDeck(gameState, agentID)) / cardsInStartingDeck);
         newTuple.put("MOVES_LEFT", (double) movesLeft(gameState, agentID) / gameState.getPlayerCount());
         newTuple.put("UNAVAILABLE_POINTS", pointsAlreadyThrownAway(gameState) / 25.0);
         newTuple.put("FIVES_ON_TABLE", suitsAtOrHigherThan(5, gameState) / 5.0);
@@ -142,6 +139,7 @@ public abstract class StateGatherer {
             newTuple.put(featureID + "_PLAYABLE", maxPlayable[0]);
             newTuple.put(featureID + "_PLAYABLE_PLUS_ONE", maxPlayablePlusOne[0]);
             newTuple.put(featureID + "_DISCARDABLE", maxDiscardable[0]);
+            newTuple.put(featureID + "_INFORMATION", informationForPlayer(gameState, featurePlayer));
             if (debug)
                 logger.debug(String.format("Player %d, Playable: %1.2f/%1.2f/%1.2f\tDiscardable: %1.2f/%1.2f/%1.2f",
                         featurePlayer, maxPlayable[0], maxPlayable[1], maxPlayable[2], maxDiscardable[0], maxDiscardable[1], maxDiscardable[2]));
@@ -317,24 +315,29 @@ public abstract class StateGatherer {
                 .collect(Collectors.joining("\t"));
     }
 
-    /*
-    Returns the number of Moves Left, based on being called just before playerID takes their turn
-     */
-    public static int movesLeft(GameState state, int playerID) {
-        long cardsNotInHandThatAreInDeck = IntStream.range(0, state.getHandSize())
+
+    private static int cardsNotInHandThatAreInDeck(GameState state, int playerID) {
+        long retValue = IntStream.range(0, state.getHandSize())
                 .filter(i -> {
                     Hand h = state.getHand(playerID);
                     return h.getCard(i) == null && h.hasCard(i);
                 })
                 .count();
+        return (int) retValue;
+    }
 
-        if (state.getDeck().getCardsLeft() - cardsNotInHandThatAreInDeck > 0) return state.getPlayerCount();
+    /*
+    Returns the number of Moves Left, based on being called just before playerID takes their turn
+     */
+    public static int movesLeft(GameState state, int playerID) {
+        if (state.getDeck().getCardsLeft() - cardsNotInHandThatAreInDeck(state, playerID) > 0)
+            return state.getPlayerCount();
         List<GameEvent> history = state.getHistory();
         for (int i = history.size() - 1; i >= 0; i--) {
             GameEvent e = history.get(i);
             if (e instanceof CardDrawn) {
                 // "player %s draw card %s %d in slot %d"
-                // and a huge hack to extarct the playerID from the string representation
+                // and a huge hack to extract the playerID from the string representation
                 // as it's a private field!
                 int playerWhoDrew = Integer.valueOf(e.toString().substring(7, 8));
                 // if the next player, then everyone has a turn left
@@ -348,6 +351,22 @@ public abstract class StateGatherer {
             }
         }
         throw new AssertionError("Should not be able to reach this");
+    }
+
+    private static double informationForPlayer(GameState state, int playerID) {
+        double retValue = 0.0;
+        int actualCards = 0;
+        Hand h = state.getHand(playerID);
+        for (int i = 0; i < h.getSize(); i++) {
+            if (h.hasCard(i)) {
+                actualCards++;
+                if (h.getKnownColour(i) != null)
+                    retValue += 0.5;
+                if (h.getKnownValue(i) != null)
+                    retValue += 0.5;
+            }
+        }
+        return retValue / actualCards;
     }
 
 }

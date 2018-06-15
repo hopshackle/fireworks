@@ -60,6 +60,7 @@ public class MCTSRuleNode extends MCTSNode {
 
         for (MCTSNode child : validChildren) {
             double childScore = child.getUCTValue() + (random.nextDouble() * EPSILON);
+            if (logger.isDebugEnabled()) logger.debug(String.format("\tUCT: %.2f from base %.2f for %s", childScore, child.score / child.visits, child.moveToState));
 
             if (childScore > bestScore) {
                 bestScore = childScore;
@@ -67,6 +68,7 @@ public class MCTSRuleNode extends MCTSNode {
             }
         }
 
+        if (logger.isDebugEnabled()) logger.debug(String.format("\tChosen Action is %s", bestChild.moveToState));
         return bestChild;
     }
 
@@ -86,17 +88,7 @@ public class MCTSRuleNode extends MCTSNode {
     }
 
     public List<Action> getAllLegalMoves(GameState state, int nextID) {
-        // first add the current players hand into the deck - so that any Rule that uses the deck to
-        // represent 'bindable' cards, does include the actual cards in the players hand!
-        Hand h = state.getHand(nextID);
-        Deck deck = state.getDeck();
-        List<Card> cardsAdded = new ArrayList<>();
-        for (int i = 0; i < state.getHandSize(); i++) {
-            if (h.getCard(i) != null) {
-                deck.add(h.getCard(i));
-                cardsAdded.add(h.getCard(i));
-            }
-        }
+        // we assume that state has had hand/deck sorted before making a decision
 
         List<Action> retValue = allRules.stream()
                 .map(r -> r.execute(nextID, state))
@@ -104,9 +96,6 @@ public class MCTSRuleNode extends MCTSNode {
                 .filter(p -> p.isLegal(nextID, state))
                 .distinct()
                 .collect(Collectors.toList());
-
-        // then remove the cards again
-        cardsAdded.forEach(deck::remove);
 
         return retValue;
     }

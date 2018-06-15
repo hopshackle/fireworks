@@ -59,6 +59,8 @@ public class MCTSNode {
 
     public MCTSNode(MCTSNode parent, int agentId, Action moveToState, double expConst, Collection<Action> allUnexpandedActions, GameState reference) {
         this.referenceState = reference.getCopy();
+        // we then need to modify the reference state a little, to remove the active agent's hand from the deck
+        // (where it was put before any decision was taken)
         this.expConst = expConst;
         this.parent = parent;
         this.agentId = agentId;
@@ -125,6 +127,7 @@ public class MCTSNode {
             }
             incrementParentVisit(moveToMake);
             double childScore = child.getUCTValue() + (random.nextDouble() * EPSILON);
+            if (logger.isDebugEnabled()) logger.debug(String.format("\tUCT: %.2f from base %.2f for %s", childScore, child.score / child.visits, moveToMake));
 
             if (childScore > bestScore) {
                 bestScore = childScore;
@@ -137,6 +140,7 @@ public class MCTSNode {
             // we still need to increment the count for this, even though it is not yet expanded
         }
 
+        if (logger.isDebugEnabled()) logger.debug(String.format("\tChosen Action is %s", bestChild.moveToState));
         return bestChild;
     }
 

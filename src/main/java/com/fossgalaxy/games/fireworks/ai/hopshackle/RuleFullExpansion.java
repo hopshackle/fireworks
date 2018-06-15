@@ -52,26 +52,20 @@ public class RuleFullExpansion extends RuleExpansionPolicy {
             actionValues = VAgent.get().getAllActionValues(nextAgentID, state);
         }
 
-
-        MCTSNode best = null;
-        double bestScore = Double.NEGATIVE_INFINITY;
         for (Action a : actionValues.keySet()) {
             if (!parent.containsChild(a)) {
                 MCTSNode child = createNode(parent, nextAgentID, a, state, parent.expConst);
                 child.visits = 1;
                 child.parentWasVisitedAndIWasLegal.put(a, 1);
-                child.score = actionValues.get(a);
-                if (child.score > bestScore) {
-                    bestScore = child.score;
-                    best = child;
-                }
+                child.score = actionValues.get(a) * 25.0 + state.getScore();
                 // we assume that the best action achieves the state value, and that one with a value of 0.0 achieves one point fewer
-                if (logger.isTraceEnabled())
-                    logger.trace(String.format("Creating node for %s with score %.2f (parent %.2f)", a.toString(), child.score, parent.score / parent.visits));
+                if (logger.isDebugEnabled())
+                    logger.debug(String.format("Creating node for %s with score %.2f (parent %.2f)", a.toString(), child.score, parent.score / parent.visits));
                 parent.addChild(child);
             }
         }
-        return best;
+        // Now we have expanded all nodes, we use standard UCT to pick one
+        return parent.getUCTNode(state);
     }
 
 }

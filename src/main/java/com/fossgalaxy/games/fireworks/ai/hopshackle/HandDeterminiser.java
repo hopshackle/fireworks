@@ -3,6 +3,8 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.stream.*;
@@ -14,6 +16,7 @@ public class HandDeterminiser {
     private int playerCount, rootAgent;
     private Card cardLastUsed;
     private Random r = new Random(26678);
+    private Logger logger = LoggerFactory.getLogger(HandDeterminiser.class);
 
     public HandDeterminiser(GameState state, int rootID) {
         playerCount = state.getPlayerCount();
@@ -29,6 +32,13 @@ public class HandDeterminiser {
                 state.getDeck().add(state.getCardAt(rootID, i));
             }
         bindNewCards(rootID, state);
+        if (logger.isDebugEnabled()) {
+            String handString = IntStream.range(0, state.getHandSize())
+                    .mapToObj(state.getHand(rootID)::getCard)
+                    .map(Object::toString)
+                    .collect(Collectors.joining(", "));
+            logger.debug(String.format("Player %d determinised to %s", rootID, handString));
+        }
     }
 
     public void determiniseHandFor(int agentID, GameState state) {
