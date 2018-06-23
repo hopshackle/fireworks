@@ -1,5 +1,6 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
+import com.fossgalaxy.games.fireworks.ai.iggi.Utils;
 import com.fossgalaxy.games.fireworks.ai.mcts.IterationObject;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
@@ -8,6 +9,8 @@ import com.fossgalaxy.games.fireworks.state.Deck;
 import com.fossgalaxy.games.fireworks.state.GameState;
 import com.fossgalaxy.games.fireworks.state.Hand;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
+import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
+import com.fossgalaxy.games.fireworks.state.actions.PlayCard;
 import com.fossgalaxy.games.fireworks.state.events.GameEvent;
 import com.fossgalaxy.games.fireworks.utils.DebugUtils;
 
@@ -62,12 +65,13 @@ public class MCTSInfoSet extends MCTS {
             movesLeft = Integer.MAX_VALUE;
         }
 
-        MCTSNode root = createNode(null, (agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), null, state);
+        MCTSNode root = createNode(null, (agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), null);
+        root.setReferenceState(state.getCopy());
 
         logDebugGameState(state, agentID);
 
 //        for (int round = 0; round < roundLength; round++) {
-        while (System.currentTimeMillis() < finishTime) {
+        while (System.currentTimeMillis() < finishTime || rollouts == 0) {
             //find a leaf node
             rollouts++;
             GameState currentState = state.getCopy();
@@ -109,7 +113,8 @@ public class MCTSInfoSet extends MCTS {
             }
         }
 
-        Action chosenOne = root.getBestNode().getAction();
+        MCTSNode bestNode = root.getBestNode();
+        Action chosenOne = (bestNode != null) ? bestNode.getAction() : new PlayCard(0);
         if (logger.isTraceEnabled()) {
             logger.trace("Move Chosen by {} was {}", agentID, chosenOne);
             root.printChildren();
@@ -151,11 +156,14 @@ public class MCTSInfoSet extends MCTS {
             // put active hand into deck for decision making
             Hand myHand = state.getHand(agentAboutToAct);
             Deck deck = state.getDeck();
-            int cardsAddedToDeck = 0;
+            Card[] hand = new Card[myHand.getSize()];
+            int cardsAdded = 0;
             for (int i = 0; i < myHand.getSize(); i++) {
                 if (myHand.getCard(i) != null) {
                     deck.add(myHand.getCard(i));
-                    cardsAddedToDeck++;
+                    hand[i] = myHand.getCard(i);
+                    myHand.bindCard(i, null);
+                    cardsAdded++;
                 }
             }
 
@@ -172,17 +180,19 @@ public class MCTSInfoSet extends MCTS {
             if (current.fullyExpanded(state)) {
                 next = current.getUCTNode(state);
             } else {
-                if (current == root && rollouts > 20) {
-                    int sg = 0;
-                }
                 next = expand(current, state);
                 nodeExpanded = true;
                 //            return next;
             }
 
-            for (int i = 0; i < cardsAddedToDeck; i++) {
-                deck.getTopCard();
+
+            for (int i = 0; i < hand.length; i++) {
+                if (hand[i] != null) {
+                    myHand.bindCard(i, hand[i]);
+                }
             }
+
+            for (int i= 0; i < cardsAdded; i++) deck.getTopCard();
 
             if (next == null) {
                 //XXX if all follow on states explored so far are null, we are now a leaf node
@@ -208,6 +218,10 @@ public class MCTSInfoSet extends MCTS {
                 handDeterminiser.recordAction(action, agent, state);
                 List<GameEvent> events = action.apply(agent, state);
                 events.forEach(state::addEvent);
+                // we then set the reference state on the node, once the action has actually been executed
+                // this is a fully determinised state
+                if (current.getReferenceState() == null)
+                    current.setReferenceState(state.getCopy());
             }
 
             if (iterationObject.isMyGo(agent)) {

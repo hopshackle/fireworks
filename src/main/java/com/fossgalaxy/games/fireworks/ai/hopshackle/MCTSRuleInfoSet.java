@@ -1,17 +1,10 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
-import com.fossgalaxy.games.fireworks.ai.mcts.IterationObject;
-import com.fossgalaxy.games.fireworks.ai.osawa.rules.OsawaDiscard;
-import com.fossgalaxy.games.fireworks.ai.osawa.rules.TellPlayableCardOuter;
-import com.fossgalaxy.games.fireworks.ai.rule.*;
-import com.fossgalaxy.games.fireworks.ai.rule.random.DiscardProbablyUselessCard;
-import com.fossgalaxy.games.fireworks.ai.rule.random.PlayProbablySafeCard;
+import com.fossgalaxy.games.fireworks.ai.rule.CompleteTellUsefulCard;
+import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
-import com.fossgalaxy.games.fireworks.state.GameState;
-import com.fossgalaxy.games.fireworks.state.actions.Action;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by WebPigeon on 09/08/2016.
@@ -23,18 +16,27 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
     static {
   //      allRules.add(new OsawaDiscard());
   //      allRules.add(new DiscardHighest());
-        allRules.add(new TellAboutOnes());
+  //      allRules.add(new TellAboutOnes());
+        allRules.add(new TellNextPlayerAboutSingleUsefulCard());
+        ConventionUtils.singleTouchOnNextPlayer = true;
         allRules.add(new TellMostInformation(true));
         allRules.add(new TellAnyoneAboutUsefulCard());
         allRules.add(new TellDispensable());
-        allRules.add(new TellPlayableCardOuter());
+   //     allRules.add(new TellPlayableCardOuter());
         allRules.add(new TellIllInformed());
-        allRules.add(new TellFinesse());
-        allRules.add(new PlaySafeCard());
-        allRules.add(new PlayProbablySafeCard(0.6));
-        allRules.add(new PlayFinesse());
-        allRules.add(new DiscardProbablyUselessCard(0.6));
-        allRules.add(new DiscardOldestFirst());
+        allRules.add(new CompleteTellUsefulCard());
+        allRules.add(new CompleteTellDispensableCard());
+   //     allRules.add(new TellFinesse());
+    //    allRules.add(new PlaySafeCard());
+        allRules.add(new PlayProbablySafeCard(0.0));
+   //     allRules.add(new PlayProbablySafeLateGameCard(0.4, 5));
+   //     allRules.add(new PlayFinesse());
+   //     allRules.add(new DiscardProbablyUselessCard(0.8));
+    //    allRules.add(new DiscardOldestFirst());
+   //     allRules.add(new DiscardOldestNoInfoFirst());
+  //      allRules.add(new DiscardLeastLikelyToBeNecessary());
+        allRules.add(new DiscardProbablyUselessCard(0.0));
+  //      allRules.add(new TellFives());
     }
 
     /**

@@ -102,7 +102,9 @@ public class MCTS implements Agent, HasGameOverProcessing {
             movesLeft = Integer.MAX_VALUE;
         }
 
-        MCTSNode root = createNode(null, (agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), null, state);
+        MCTSNode root = createNode(null, (agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), null);
+        root.setReferenceState(state.getCopy());
+
         Map<Integer, List<Card>> possibleCards = DeckUtils.bindCard(agentID, state.getHand(agentID), state.getDeck().toList());
         List<Integer> bindOrder = DeckUtils.bindOrder(possibleCards);
 
@@ -180,8 +182,8 @@ public class MCTS implements Agent, HasGameOverProcessing {
         return expansionPolicy.expand(parent, state);
     }
 
-    protected MCTSNode createNode(MCTSNode parent, int previousAgentID, Action moveTo, GameState state) {
-        return expansionPolicy.createNode(parent, previousAgentID, moveTo, state, C);
+    protected MCTSNode createNode(MCTSNode parent, int previousAgentID, Action moveTo) {
+        return expansionPolicy.createNode(parent, previousAgentID, moveTo, C);
     }
 
     protected void logDebugGameState(GameState state, int agentID) {
@@ -239,6 +241,8 @@ public class MCTS implements Agent, HasGameOverProcessing {
                 state.tick();
                 List<GameEvent> events = action.apply(agent, state);
                 events.forEach(state::addEvent);
+                if (current.getReferenceState() == null)
+                    current.setReferenceState(state.getCopy());
             }
 
             if (iterationObject.isMyGo(agent)) {

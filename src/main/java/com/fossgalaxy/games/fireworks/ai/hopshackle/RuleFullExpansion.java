@@ -54,7 +54,7 @@ public class RuleFullExpansion extends RuleExpansionPolicy {
 
         for (Action a : actionValues.keySet()) {
             if (!parent.containsChild(a)) {
-                MCTSNode child = createNode(parent, nextAgentID, a, state, parent.expConst);
+                MCTSNode child = createNode(parent, nextAgentID, a, parent.expConst);
                 child.visits = 1;
                 child.parentWasVisitedAndIWasLegal.put(a, 1);
                 child.score = actionValues.get(a) * 25.0 + state.getScore();

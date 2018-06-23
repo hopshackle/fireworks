@@ -19,12 +19,13 @@ public class SimpleNodeExpansion implements ExpansionPolicy{
 
 
     @Override
-    public MCTSNode createNode(MCTSNode parent, int previousAgentID, Action moveTo, GameState state, double C) {
+    public MCTSNode createNode(MCTSNode parent, int previousAgentID, Action moveTo, double C) {
+        GameState state = parent.getReferenceState();
         Collection<Action> allActions = Utils.generateAllActions((previousAgentID + 1) % state.getPlayerCount(), state.getPlayerCount());
         MCTSNode root = new MCTSNode(
                 parent,
                 previousAgentID,
-                moveTo, C, allActions, state);
+                moveTo, C, allActions);
         return root;
     }
 
@@ -60,7 +61,7 @@ public class SimpleNodeExpansion implements ExpansionPolicy{
             return parent.getChild(action);
         }
         //XXX we may expand a node which we already visited? :S
-        MCTSNode child = createNode(parent, nextAgentID, action, state, parent.expConst);
+        MCTSNode child = createNode(parent, nextAgentID, action, parent.expConst);
         parent.addChild(child);
         return child;
     }

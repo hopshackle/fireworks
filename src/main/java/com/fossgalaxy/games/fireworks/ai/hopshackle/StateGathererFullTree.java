@@ -3,6 +3,8 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle;
 import com.fossgalaxy.games.fireworks.state.Card;
 import com.fossgalaxy.games.fireworks.state.GameState;
 import com.fossgalaxy.games.fireworks.state.Hand;
+import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
+import com.fossgalaxy.games.fireworks.state.actions.PlayCard;
 
 import java.io.*;
 import java.util.*;
@@ -11,14 +13,14 @@ public class StateGathererFullTree extends StateGatherer {
 
     private int VISIT_THRESHOLD;
     protected FileWriter writerCSV;
-    private int recordsWritten = 0;
+    private int MAX_DEPTH;
 
-    public StateGathererFullTree(int visitThreshold) {
+    public StateGathererFullTree(int visitThreshold, int depth) {
         VISIT_THRESHOLD = visitThreshold;
+        MAX_DEPTH = depth;
     }
 
     public void processTree(MCTSNode root) {
-        recordsWritten = 0;
         if (root.visits > VISIT_THRESHOLD) {
             try {
                 writerCSV = new FileWriter(fileLocation + "/TreeData.csv", true);
@@ -37,36 +39,38 @@ public class StateGathererFullTree extends StateGatherer {
     }
 
     private void processNode(MCTSNode node) {
+        if (node.getDepth() > MAX_DEPTH) return;
         for (MCTSNode child : node.children) {
             if (child.visits >= VISIT_THRESHOLD) {
                 // child node associated with action, and the parent state from which this action was taken
-                // the state on the child is a reference one...so may not be applicable
+                // (or could have been)
 
-                // the attached state is likeley to be determinised, which means that
-                // cards in the active player's hand are also in the deck
-                // this is great for probability calculations, but less good for detecting the end of the game
-                // for which we have to check the cards left in deck to estimate (due to issues in the state
-                // that GameRunner sends us).
-                Hand activehand = node.referenceState.getHand(child.agentId);
-                Card[] cards = new Card[activehand.getSize()];
-                for (int i = 0; i < activehand.getSize(); i++) {
-                    if (activehand.hasCard(i)) {
-                        cards[i] = activehand.getCard(i);
-                        activehand.bindCard(i, null);
-                    }
+                GameState refState = node.getReferenceState();
+                if (refState == null) {
+                    throw new AssertionError("Should not have a null reference state");
                 }
 
-                if (child.moveToState.isLegal(child.agentId, node.referenceState))
-                    storeData(child, node.referenceState, child.agentId);
-
-                // and reset hand
-                for (int i = 0; i < activehand.getSize(); i++) {
-                    if (activehand.hasCard(i)) {
-                        activehand.bindCard(i, cards[i]);
-                    }
+                Hand activehand = refState.getHand(child.agentId);
+                boolean moveIsLegal;
+                // once again, we can't use .isLegal() on the Action, because this is a little buggy
+                // and does not use hasCard() as it should
+                if (child.moveToState instanceof PlayCard) {
+                    int slot = ((PlayCard) child.moveToState).slot;
+                    moveIsLegal = activehand.hasCard(slot);
+                } else if (child.moveToState instanceof DiscardCard) {
+                    int slot = ((DiscardCard) child.moveToState).slot;
+                    moveIsLegal = activehand.hasCard(slot) && refState.getInfomation() != refState.getStartingInfomation();
+                } else {
+                    moveIsLegal = child.moveToState.isLegal(child.agentId, refState);
                 }
-                // note it is also possible for a child action to be illegal from the reference state
-                // due to the specific hand-determinization for the active player
+                if (moveIsLegal) // as the move might not be legal from the reference state, but was for some other state that passed through
+                    storeData(child, refState, child.agentId);
+
+                // it is possible for a child action to be illegal from the reference state
+                // due to the specific cards drawn by the other players en-route (as the card drawn by Play or Discard
+                // does not affect the transition function / information set differentiation).
+                // In addition, at each rollout we have a different determinisation in place for the hand
+                // of the root player.
                 processNode(child);
 
             }
@@ -76,7 +80,6 @@ public class StateGathererFullTree extends StateGatherer {
     @Override
     public void storeData(MCTSNode node, GameState state, int playerID) {
         // target is the increase in game score from the starting state to game end on taking this action
-        recordsWritten++;
         double target = ((node.score / node.visits) - state.getScore()) / 25.0;
         Map<String, Double> features = extractFeaturesWithRollForward(state, node.moveToState, playerID);
         String csvLine = asCSVLine(features);

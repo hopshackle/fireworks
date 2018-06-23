@@ -1,6 +1,5 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
-import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.*;
 import com.fossgalaxy.games.fireworks.state.events.CardDrawn;
@@ -11,7 +10,6 @@ import org.nd4j.linalg.cpu.nativecpu.NDArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileWriter;
 import java.util.*;
 import java.util.stream.*;
 
@@ -115,7 +113,8 @@ public abstract class StateGatherer {
                         .forEach(possibles::add);
             // we need to add the actual cards in the player's hand to those they think they might have
 
-            Map<Integer, List<Card>> possibleCards = DeckUtils.bindBlindCard(featurePlayer, playerHand, possibles);
+            //      Map<Integer, List<Card>> possibleCards = DeckUtils.bindBlindCard(featurePlayer, playerHand, possibles);
+            Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(featurePlayer, playerHand, possibles, gameState);
             //         Map<Integer, List<Card>> actualCards = DeckUtils.bindCard(featurePlayer, playerHand, gameState.getDeck().toList());
             // this provides us with all possible values for the cards in hand, from the perspective of that player
             // so we can now go through this to calculate the probability of playable / discardable
@@ -123,6 +122,7 @@ public abstract class StateGatherer {
             double[] maxPlayablePlusOne = new double[3];
             double[] maxDiscardable = new double[3];
             for (int slot : possibleCards.keySet()) {
+                if (!playerHand.hasCard(slot)) continue;
                 StringBuilder output = new StringBuilder();
                 if (debug) {
                     if (featurePlayer != agentID)
@@ -147,15 +147,10 @@ public abstract class StateGatherer {
         return newTuple;
     }
 
-    private static Map<Integer, List<Card>> getPossibleCards(GameState state, int playerID) {
+    private static Map<Integer, List<Card>> getPossibleCardsAssumingHandInDeck(GameState state, int playerID) {
         List<Card> possibles = state.getDeck().toList();
         Hand playerHand = state.getHand(playerID);
-        IntStream.range(0, playerHand.getSize())
-                .mapToObj(playerHand::getCard)
-                .filter(Objects::nonNull)
-                .forEach(possibles::add);
-
-        Map<Integer, List<Card>> possibleCards = DeckUtils.bindBlindCard(playerID, playerHand, possibles);
+        Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(playerID, playerHand, possibles, state);
         return possibleCards;
     }
 
@@ -167,14 +162,7 @@ public abstract class StateGatherer {
     }
 
     private static double[] probabilities(int slot, GameState state, int playerID) {
-        List<Card> possibles = state.getDeck().toList();
-        Hand playerHand = state.getHand(playerID);
-        IntStream.range(0, playerHand.getSize())
-                .mapToObj(playerHand::getCard)
-                .filter(Objects::nonNull)
-                .forEach(possibles::add);
-
-        Map<Integer, List<Card>> possibleCards = getPossibleCards(state, playerID);
+        Map<Integer, List<Card>> possibleCards = getPossibleCardsAssumingHandInDeck(state, playerID);
         return probabilities(state, possibleCards.get(slot));
     }
 
@@ -212,7 +200,7 @@ public abstract class StateGatherer {
     private static double[] lastCardOfUsefulPair(int slot, int player, GameState state) {
         double numberOfSuchCards = 0.0;
         double pointsForegone = 0.0;
-        List<Card> possibleCards = getPossibleCards(state, player).get(slot);
+        List<Card> possibleCards = getPossibleCardsAssumingHandInDeck(state, player).get(slot);
         for (Card c : possibleCards) {
             if (state.getTableValue(c.colour) >= c.value) {
                 // not useful (discardable)

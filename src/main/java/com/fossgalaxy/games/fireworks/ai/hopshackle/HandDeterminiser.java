@@ -157,7 +157,7 @@ public class HandDeterminiser {
         if (toChooseFrom.isEmpty()) {
             throw new AssertionError("no cards ");
         } else {
-            Map<Integer, List<Card>> possibleCards = DeckUtils.bindBlindCard(agentID, state.getHand(agentID), toChooseFrom);
+            Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(agentID, state.getHand(agentID), toChooseFrom, state);
             List<Integer> bindOrder = DeckUtils.bindOrder(possibleCards);
             bindOrder = bindOrder.stream().filter(slot -> !possibleCards.get(slot).isEmpty()).collect(Collectors.toList());
             Map<Integer, Card> myHandCards = DeckUtils.bindCards(bindOrder, possibleCards);

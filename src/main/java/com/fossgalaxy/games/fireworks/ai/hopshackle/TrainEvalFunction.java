@@ -9,6 +9,7 @@ import org.datavec.api.split.*;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.Updater;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
@@ -20,6 +21,7 @@ import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.dataset.api.preprocessor.NormalizerStandardize;
+import org.nd4j.linalg.learning.config.IUpdater;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.nd4j.linalg.dataset.api.preprocessor.serializer.*;
@@ -37,8 +39,8 @@ public class TrainEvalFunction {
     private static int hiddenNeurons = 30;
     private static double learningRate = 1e-3;
     private static int seed = 147;
-    private static int epochs = 30;
-    private static double trainingPercentage = 0.8;
+    private static int epochs = 200;
+    private static double trainingPercentage = 1.0;
 
     /*
     Takes a file as an argument, and then uses this to train a simple Neural Network
@@ -82,11 +84,11 @@ public class TrainEvalFunction {
         DataSetIterator testIterator = new RecordReaderDataSetIterator(crrTest, testData.size(), 0, 0, true);
         testIterator.setPreProcessor(normalizer); // then set this to pre-process the test data too!
 
-        log.info("Completed pre-processing...");
+        log.info(String.format("Completed pre-processing. %d training records and %d test records.", trainData.size(), testData.size()));
         MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
                 .seed(seed)
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-                //            .l2(1e-6)
+                .l2(1e-6)
                 .updater(new Nesterovs(learningRate, 0.9))
                 .list()
                 .layer(0, new DenseLayer.Builder().nIn(iterator.inputColumns()).nOut(hiddenNeurons)

@@ -1,7 +1,11 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
+import com.fossgalaxy.games.fireworks.state.Card;
 import com.fossgalaxy.games.fireworks.state.GameState;
+import com.fossgalaxy.games.fireworks.state.Hand;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
+import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
+import com.fossgalaxy.games.fireworks.state.actions.PlayCard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +24,7 @@ public class MCTSNode {
     protected static final boolean DISCOUNT_ENABLED = false;
 
     protected final double expConst;
-    protected final GameState referenceState;
+    private GameState referenceState;
     protected final Action moveToState;
     protected final int agentId;
     protected final MCTSNode parent;
@@ -38,29 +42,26 @@ public class MCTSNode {
     protected final StatsSummary rolloutMoves;
 
     public MCTSNode(Collection<Action> allUnexpandedActions) {
-        this(null, -1, null, DEFAULT_EXP_CONST, allUnexpandedActions, null);
+        this(null, -1, null, DEFAULT_EXP_CONST, allUnexpandedActions);
     }
 
     public MCTSNode(double expConst, Collection<Action> allUnexpandedActions) {
-        this(null, -1, null, expConst, allUnexpandedActions, null);
+        this(null, -1, null, expConst, allUnexpandedActions);
     }
 
     public MCTSNode(int agentID, Action moveToState, Collection<Action> allUnexpandedActions) {
-        this(null, agentID, moveToState, DEFAULT_EXP_CONST, allUnexpandedActions, null);
+        this(null, agentID, moveToState, DEFAULT_EXP_CONST, allUnexpandedActions);
     }
 
     public MCTSNode(int agentID, Action moveToState, double expConst, Collection<Action> allUnexpandedActions) {
-        this(null, agentID, moveToState, expConst, allUnexpandedActions, null);
+        this(null, agentID, moveToState, expConst, allUnexpandedActions);
     }
 
     public MCTSNode(MCTSNode parent, int agentId, Action moveToState, Collection<Action> allUnexpandedActions) {
-        this(parent, agentId, moveToState, DEFAULT_EXP_CONST, allUnexpandedActions, null);
+        this(parent, agentId, moveToState, DEFAULT_EXP_CONST, allUnexpandedActions);
     }
 
-    public MCTSNode(MCTSNode parent, int agentId, Action moveToState, double expConst, Collection<Action> allUnexpandedActions, GameState reference) {
-        this.referenceState = reference.getCopy();
-        // we then need to modify the reference state a little, to remove the active agent's hand from the deck
-        // (where it was put before any decision was taken)
+    public MCTSNode(MCTSNode parent, int agentId, Action moveToState, double expConst, Collection<Action> allUnexpandedActions) {
         this.expConst = expConst;
         this.parent = parent;
         this.agentId = agentId;
@@ -77,7 +78,6 @@ public class MCTSNode {
 
         assert (parent != null && moveToState != null) || (parent == null && moveToState == null);
     }
-
 
 
     public void addChild(MCTSNode node) {
@@ -102,7 +102,7 @@ public class MCTSNode {
         MCTSNode current = this;
         while (current != null) {
             if (DISCOUNT_ENABLED) {
-                current.score += score * Math.pow(0.95, current.getDepth()-1.0);
+                current.score += score * Math.pow(0.95, current.getDepth() - 1.0);
             } else {
                 current.score += score;
             }
@@ -122,12 +122,21 @@ public class MCTSNode {
         for (MCTSNode child : children) {
             //XXX Hack to check if the move is legal in this version
             Action moveToMake = child.moveToState;
-            if (!moveToMake.isLegal(child.agentId, state)) {
+            if (moveToMake instanceof DiscardCard) {
+                DiscardCard dc = (DiscardCard) moveToMake;
+                if (state.getInfomation() == state.getStartingInfomation() || !state.getHand(child.agentId).hasCard(dc.slot))
+                    continue;
+            } else if (moveToMake instanceof PlayCard) {
+                PlayCard pc = (PlayCard) moveToMake;
+                if (!state.getHand(child.agentId).hasCard(pc.slot))
+                    continue;
+            } else if (!moveToMake.isLegal(child.agentId, state)) {
                 continue;
             }
             incrementParentVisit(moveToMake);
             double childScore = child.getUCTValue() + (random.nextDouble() * EPSILON);
-            if (logger.isDebugEnabled()) logger.debug(String.format("\tUCT: %.2f from base %.2f for %s", childScore, child.score / child.visits, moveToMake));
+            if (logger.isDebugEnabled())
+                logger.debug(String.format("\tUCT: %.2f from base %.2f for %s", childScore, child.score / child.visits, moveToMake));
 
             if (childScore > bestScore) {
                 bestScore = childScore;
@@ -241,18 +250,18 @@ public class MCTSNode {
         }
     }
 
-    public String printD3(){
+    public String printD3() {
         StringBuilder buffer = new StringBuilder();
         printD3Internal(buffer);
         return buffer.toString();
     }
 
-    private void printD3Internal(StringBuilder buffer){
+    private void printD3Internal(StringBuilder buffer) {
         buffer.append("{\"name\": \"\"");
-        if(!children.isEmpty()){
+        if (!children.isEmpty()) {
             buffer.append(",\"children\":[");
-            for (int i = 0; i < children.size(); i++){
-                if(i != 0){
+            for (int i = 0; i < children.size(); i++) {
+                if (i != 0) {
                     buffer.append(",");
                 }
                 children.get(i).printD3Internal(buffer);
@@ -278,5 +287,26 @@ public class MCTSNode {
 
     public GameState getReferenceState() {
         return referenceState;
+    }
+
+    /* it is the caller's responsibility to pass a copy of a state in
+    so that it is not mutated by any other actor. The reference state is the state
+    that applies after the action is taken - so we do not know this on Node creation
+     */
+    public void setReferenceState(GameState refState) {
+        // We also ensure that the next player (agentID + 1)
+        // has their hand set to null as Unknown
+        Hand activehand = refState.getHand((agentId + 1) % refState.getPlayerCount());
+        Card[] cards = new Card[activehand.getSize()];
+        for (int i = 0; i < activehand.getSize(); i++) {
+            if (activehand.hasCard(i)) {
+                cards[i] = activehand.getCard(i);
+                activehand.bindCard(i, null);
+                if (cards[i] != null) {
+                    refState.getDeck().add(cards[i]);
+                }
+            }
+        }
+        referenceState = refState;
     }
 }
