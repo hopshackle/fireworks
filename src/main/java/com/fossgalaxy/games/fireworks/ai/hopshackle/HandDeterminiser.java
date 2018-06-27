@@ -160,12 +160,34 @@ public class HandDeterminiser {
             Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(agentID, state.getHand(agentID), toChooseFrom, state);
             List<Integer> bindOrder = DeckUtils.bindOrder(possibleCards);
             bindOrder = bindOrder.stream().filter(slot -> !possibleCards.get(slot).isEmpty()).collect(Collectors.toList());
-            Map<Integer, Card> myHandCards = DeckUtils.bindCards(bindOrder, possibleCards);
-            for (int slot = 0; slot < myHand.getSize(); slot++) {
-                Card hand = myHandCards.getOrDefault(slot, null);
-                myHand.bindCard(slot, hand);
-                deck.remove(hand);
-            }
+            int attempts = 0;
+            boolean success = false;
+            do {
+                try {
+                    Map<Integer, Card> myHandCards = DeckUtils.bindCards(bindOrder, possibleCards);
+                    for (int slot = 0; slot < myHand.getSize(); slot++) {
+                        Card hand = myHandCards.getOrDefault(slot, null);
+                        myHand.bindCard(slot, hand);
+                        deck.remove(hand);
+                    }
+                    success = true;
+                } catch (IllegalArgumentException e) {
+                    // this may occur if  we do have a cards for the slot, these have all gone by the time we get to bind it.
+                    // to address this
+                    attempts++;
+                    if (attempts > 5 && attempts < 9) {
+                        // we give up
+                        logger.info("Failed to bind cards in HandDeterminiser using Conventions - trying without");
+                        Map<Integer, List<Card>> possibleCards2 = DeckUtils.bindBlindCard(agentID, state.getHand(agentID), toChooseFrom);
+                        bindOrder = DeckUtils.bindOrder(possibleCards);
+                        bindOrder = bindOrder.stream().filter(slot -> !possibleCards2.get(slot).isEmpty()).collect(Collectors.toList());
+                    } else if (attempts > 8) {
+                        // OK. We're really stuck
+                        logger.info("That didn't work either");
+                        throw new AssertionError("Unable to bind cards to hand");
+                    }
+                }
+            } while (!success);
         }
     }
 

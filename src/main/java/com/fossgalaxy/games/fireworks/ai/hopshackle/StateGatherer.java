@@ -5,8 +5,6 @@ import com.fossgalaxy.games.fireworks.state.actions.*;
 import com.fossgalaxy.games.fireworks.state.events.CardDrawn;
 import com.fossgalaxy.games.fireworks.state.events.CardReceived;
 import com.fossgalaxy.games.fireworks.state.events.GameEvent;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.cpu.nativecpu.NDArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,13 +49,10 @@ public abstract class StateGatherer {
         allFeatures.add("ONES_ON_TABLE");
     }
 
-    public static INDArray featuresToNDArray(Map<String, Double> features) {
-        double[] asArray = allFeatures.stream()
+    public static double[] featuresToArray(Map<String, Double> features) {
+        return allFeatures.stream()
                 .mapToDouble(k -> features.getOrDefault(k, 0.00))
                 .toArray();
-        double[][] retValue = new double[1][asArray.length];
-        retValue[0] = asArray;
-        return new NDArray(retValue);
     }
 
     public static Map<String, Double> extractFeaturesWithRollForward(GameState state, Action action, int agentID) {

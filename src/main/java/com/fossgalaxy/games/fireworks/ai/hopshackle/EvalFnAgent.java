@@ -1,33 +1,23 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
-import com.fossgalaxy.games.fireworks.ai.iggi.Utils;
-import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.GameState;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
 import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
 import com.fossgalaxy.games.fireworks.state.actions.PlayCard;
 import com.fossgalaxy.games.fireworks.state.events.GameEvent;
-import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
-import org.deeplearning4j.util.ModelSerializer;
 import org.javatuples.Pair;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.api.preprocessor.NormalizerStandardize;
-import org.nd4j.linalg.dataset.api.preprocessor.serializer.NormalizerSerializer;
-import org.nd4j.linalg.dataset.*;
-import org.nd4j.linalg.dataset.api.preprocessor.serializer.StandardizeSerializerStrategy;
 import org.slf4j.*;
 
+import java.io.FileInputStream;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.*;
 
 public class EvalFnAgent implements Agent {
 
     private Logger logger = LoggerFactory.getLogger(EvalFnAgent.class);
-    private MultiLayerNetwork model;
-    private NormalizerStandardize normalizer;
+    private HopshackleNN brain;
     private double temperature;
     private boolean debug = true;
     private Random rand = new Random(47);
@@ -38,19 +28,15 @@ public class EvalFnAgent implements Agent {
         temperature = temp;
         debug = logger.isDebugEnabled();
         try {
-            model = ModelSerializer.restoreMultiLayerNetwork(modelLocation);
-            NormalizerSerializer ns = new NormalizerSerializer();
-            ns.addStrategy(new StandardizeSerializerStrategy());
-            normalizer = ns.restore(modelLocation + ".normal");
+            brain = HopshackleNN.createFromStream(new FileInputStream(modelLocation));
         } catch (Exception e) {
             System.out.println("Error when reading in Model from " + modelLocation + ": " + e.toString());
             e.printStackTrace();
         }
     }
 
-    public EvalFnAgent(MultiLayerNetwork model, NormalizerStandardize normalizer) {
-        this.model = model;
-        this.normalizer = normalizer;
+    public EvalFnAgent(HopshackleNN brain) {
+        this.brain = brain;
     }
 
     @Override
@@ -143,13 +129,12 @@ public class EvalFnAgent implements Agent {
         Map<String, Double> features = StateGatherer.extractFeatures(state, agentID);
         if (action.isPresent())
             features.putAll(StateGatherer.extractActionFeatures(action.get(), state, agentID));
-        INDArray featureRepresentation = StateGatherer.featuresToNDArray(features);
+        double[] featureRepresentation = StateGatherer.featuresToArray(features);
         if (debug) {
-            logger.debug(featureRepresentation.toString());
+            logger.debug(Arrays.stream(featureRepresentation).mapToObj(d -> String.format(".3f", d)).collect(Collectors.joining("\t")));
         }
-        normalizer.transform(featureRepresentation);
-        INDArray output = model.output(featureRepresentation);
-        return output.getDouble(0);
+        double[] output = brain.process(featureRepresentation);
+        return output[0];
     }
 
 

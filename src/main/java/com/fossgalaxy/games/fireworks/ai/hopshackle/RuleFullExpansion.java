@@ -28,7 +28,8 @@ public class RuleFullExpansion extends RuleExpansionPolicy {
     public MCTSNode expand(MCTSNode parent, GameState state) {
         // We need to obtain a score for all actions, and then create nodes for all
         // the problem is what value to create these with...we could start with the value of the parent node
-        // which is a bit of a hack...but
+        // which is a bit of a hack...but...
+        // we then assume that the best move is worth a point, and pro rata the rest
 
         int nextAgentID = (parent.getAgent() + 1) % state.getPlayerCount();
         Map<Action, Double> actionValues = new HashMap<>();
@@ -36,7 +37,7 @@ public class RuleFullExpansion extends RuleExpansionPolicy {
             actionValues = QAgent.get().getAllActionValues(nextAgentID, state);
             double stateValue = VAgent.isPresent()
                     ? VAgent.get().valueState(state, Optional.empty(), nextAgentID)
-                    : state.getScore();
+                    : state.getScore() / 25.0;
             double largestValue = Double.NEGATIVE_INFINITY;
             for (Action a : actionValues.keySet()) {
                 double value = actionValues.get(a);
@@ -46,7 +47,7 @@ public class RuleFullExpansion extends RuleExpansionPolicy {
             }
             for (Action a : actionValues.keySet()) {
                 double value = actionValues.get(a);
-                actionValues.put(a, stateValue - (1.0 - value / largestValue));
+                actionValues.put(a, stateValue + (1.0 - value / largestValue) / 25.0);
             }
         } else {
             actionValues = VAgent.get().getAllActionValues(nextAgentID, state);

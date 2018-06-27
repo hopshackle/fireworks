@@ -6,24 +6,18 @@ import com.fossgalaxy.games.fireworks.state.GameState;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
 import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
 import com.fossgalaxy.games.fireworks.state.actions.PlayCard;
-import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
-import org.deeplearning4j.util.ModelSerializer;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.api.preprocessor.NormalizerStandardize;
-import org.nd4j.linalg.dataset.api.preprocessor.serializer.NormalizerSerializer;
-import org.nd4j.linalg.dataset.api.preprocessor.serializer.StandardizeSerializerStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.javatuples.*;
 
+import java.io.FileInputStream;
 import java.util.*;
 import java.util.stream.*;
 
 public class ClassifierFnAgent implements Agent {
 
     private Logger logger = LoggerFactory.getLogger(ClassifierFnAgent.class);
-    private MultiLayerNetwork model;
-    private NormalizerStandardize normalizer;
+    private HopshackleNN brain;
     private double temperature;
     private boolean debug = true;
     private Random rand = new Random(47);
@@ -33,19 +27,11 @@ public class ClassifierFnAgent implements Agent {
         temperature = temp;
         //Load the model
         try {
-            model = ModelSerializer.restoreMultiLayerNetwork(modelLocation);
-            NormalizerSerializer ns = new NormalizerSerializer();
-            ns.addStrategy(new StandardizeSerializerStrategy());
-            normalizer = ns.restore(modelLocation + ".normal");
+            brain = HopshackleNN.createFromStream(new FileInputStream(modelLocation));
         } catch (Exception e) {
             System.out.println("Error when reading in Model from " + modelLocation + ": " + e.toString());
             e.printStackTrace();
         }
-    }
-
-    public ClassifierFnAgent(MultiLayerNetwork model, NormalizerStandardize normalizer) {
-        this.model = model;
-        this.normalizer = normalizer;
     }
 
     @Override
@@ -159,12 +145,11 @@ public class ClassifierFnAgent implements Agent {
 
     public double[] valueState(GameState state, int agentID) {
         Map<String, Double> features = StateGatherer.extractFeatures(state, agentID);
-        INDArray featureRepresentation = StateGatherer.featuresToNDArray(features);
+        double[] featureRepresentation = StateGatherer.featuresToArray(features);
         if (debug) {
-            logger.debug(featureRepresentation.toString());
+            logger.debug(Arrays.stream(featureRepresentation).mapToObj(d -> String.format(".3f", d)).collect(Collectors.joining("\t")));
         }
-        normalizer.transform(featureRepresentation);
-        INDArray output = model.output(featureRepresentation);
-        return output.toDoubleVector();
+        double[] output = brain.process(featureRepresentation);
+        return output;
     }
 }
