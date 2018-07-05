@@ -24,11 +24,12 @@ public class App
         int numPlayers = (args.length < 2) ? 4 : Integer.valueOf(args[1]);
         int numGames = (args.length < 3) ? 1 : Integer.valueOf(args[2]);
         String dataStrategy = (args.length < 4) ? "none" : args[3];
+        String dataParam = (args.length < 5) ? "" : args[4];
 
-        runGamesAndLogResults(policy, numPlayers, numGames, dataStrategy);
+        runGamesAndLogResults(policy, numPlayers, numGames, dataStrategy, dataParam);
     }
 
-    private static void runGamesAndLogResults(String agentDescriptor, int numPlayers, int numGames, String dataStrategy) {
+    private static void runGamesAndLogResults(String agentDescriptor, int numPlayers, int numGames, String dataStrategy, String dataParam) {
 
         System.out.println("Starting run for " + agentDescriptor + " at " + dateFormat.format(ZonedDateTime.now(ZoneId.of("UTC"))));
 
@@ -48,24 +49,41 @@ public class App
                 Player player = new HopshackleAgentPlayer(agentDescriptor, a);
                 if (a instanceof MCTS) {
                     MCTS policy = (MCTS) a;
+                    int threshold = dataParam.equals("") ? 50 : Integer.valueOf(dataParam);
                     switch (dataStrategy) {
                         case "none":
                             break;
                         case "MC":
+                            // Extracts state features only. Target is Monte Carlo score from full game.
+                            // Hence this values (s).
                             StateGathererMonteCarlo sgcm = new StateGathererMonteCarlo();
                             policy.setStateGatherer(sgcm);
                             policy.setEndGameProcessor(sgcm);
                             break;
                         case "simpleClassifier":
-                            StateGathererWithTarget sgwt = new StateGathererWithTarget();
+                            // Uses allRules to determine which ones are triggered. Spreads a total pmf of 1.0
+                            // evenly across all triggered rules. State features only.
+                            // Hence this provides a score for each rule in an action-classifier.
+                            StateGathererWithTargetFullTree sgwt = new StateGathererWithTargetFullTree(threshold, 12);
                             policy.setStateGatherer(sgwt);
                             break;
                         case "rollForwardClassifier":
-                            StateGathererActionClassifier sgac = new StateGathererActionClassifier();
+                            // Uses State and Action features. Target is set to be 2 x probability that the
+                            // action is at least as good as the best recorded action.
+                            // Hence this is an action classifier, not a state valuer.
+                            StateGathererActionClassifierFullTree sgac = new StateGathererActionClassifierFullTree(threshold, 12);
                             policy.setStateGatherer(sgac);
                             break;
                         case "treeRFC":
-                            StateGathererFullTree sgft = new StateGathererFullTree(50);
+                            // Processes the whole tree, for all nodes with at least the threshold visits
+                            // State and Action features used. The target is the value of the child node. So
+                            // this values (s, a)
+                            StateGathererFullTree sgft = new StateGathererFullTree(threshold, 12);
+                            policy.setStateGatherer(sgft);
+                            break;
+                        case "treeRootOnly":
+                            // As TreeRFC, but only ever processes the root node
+                            sgft = new StateGathererFullTree(threshold, 0);
                             policy.setStateGatherer(sgft);
                             break;
                         default:

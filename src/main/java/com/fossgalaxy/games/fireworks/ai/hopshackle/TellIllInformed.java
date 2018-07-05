@@ -10,10 +10,17 @@ import com.fossgalaxy.games.fireworks.state.actions.Action;
 
 /**
  * Tell a player that does't know about a useful card that a card can be played.
- *
+ * <p>
  * Created by webpigeon on 09/05/17.
  */
 public class TellIllInformed extends AbstractTellRule {
+
+    private boolean avoidConventionalTells;
+
+    public TellIllInformed(boolean avoidConventionalTells) {
+        this.avoidConventionalTells = avoidConventionalTells;
+    }
+
     @Override
     public Action execute(int playerID, GameState state) {
 
@@ -36,7 +43,7 @@ public class TellIllInformed extends AbstractTellRule {
     public Action getInformingAction(GameState state, int informer, int target) {
         Hand hand = state.getHand(target);
 
-        for (int slot=0; slot<hand.getSize(); slot++) {
+        for (int slot = 0; slot < hand.getSize(); slot++) {
             if (!hand.hasCard(slot)) {
                 continue;
             }
@@ -53,7 +60,7 @@ public class TellIllInformed extends AbstractTellRule {
             }
 
             for (Action a : ConventionUtils.tellMissing(hand, target, slot)) {
-                if (!ConventionUtils.isAConventionalTell(a, state, informer))
+                if (!avoidConventionalTells || !ConventionUtils.isAConventionalTell(a, state, informer))
                     return a;
             }
         }

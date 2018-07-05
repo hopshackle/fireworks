@@ -15,13 +15,15 @@ import com.fossgalaxy.games.fireworks.state.actions.*;
 public class TellMostInformation extends AbstractTellRule {
 
     private final boolean newInformation;
+    private final boolean avoidConventionalTells;
 
     public TellMostInformation() {
-        this(false);
+        this(false, true);
     }
 
-    public TellMostInformation(boolean newInformation) {
+    public TellMostInformation(boolean newInformation, boolean avoidConventionalTells) {
         this.newInformation = newInformation;
+        this.avoidConventionalTells = avoidConventionalTells;
     }
 
     @Override
@@ -49,7 +51,7 @@ public class TellMostInformation extends AbstractTellRule {
                 }
                 if (totalAffected > bestAffected) {
                     Action newOption = new TellValue(player, i);
-                    if (totalAffected == 1 && ConventionUtils.isAConventionalTell(newOption, state, playerID)) {
+                    if (avoidConventionalTells && totalAffected == 1 && ConventionUtils.isAConventionalTell(newOption, state, playerID)) {
                         // skip this one
                     } else {
                         bestAffected = totalAffected;
@@ -71,7 +73,7 @@ public class TellMostInformation extends AbstractTellRule {
                 }
                 if (totalAffected > bestAffected) {
                     Action newOption = new TellColour(player, colour);
-                    if (totalAffected == 1 && ConventionUtils.isAConventionalTell(newOption, state, playerID)) {
+                    if (avoidConventionalTells && totalAffected == 1 && ConventionUtils.isAConventionalTell(newOption, state, playerID)) {
                         // skip this one
                     } else {
                         bestAffected = totalAffected;

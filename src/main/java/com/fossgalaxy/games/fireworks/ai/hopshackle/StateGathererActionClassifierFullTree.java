@@ -1,15 +1,19 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
-import com.fossgalaxy.games.fireworks.state.*;
-import com.fossgalaxy.games.fireworks.state.actions.*;
-import org.apache.commons.math3.distribution.*;
+import com.fossgalaxy.games.fireworks.state.GameState;
+import org.apache.commons.math3.distribution.NormalDistribution;
 
 import java.io.FileWriter;
-import java.util.*;
+import java.util.Map;
 
-public class StateGathererActionClassifier extends StateGatherer {
+public class StateGathererActionClassifierFullTree extends StateGathererFullTree {
 
     private NormalDistribution Z = new NormalDistribution();
+
+    public StateGathererActionClassifierFullTree(int visitThreshold, int depth) {
+        super(visitThreshold, depth);
+        filename = "/TreeActionData.csv";
+    }
 
     @Override
     public void storeData(MCTSNode node, GameState gameState, int playerID) {
@@ -19,7 +23,6 @@ public class StateGathererActionClassifier extends StateGatherer {
         if (bestN < 50) return;
 
         try {
-            FileWriter writerCSV = new FileWriter(fileLocation + "/StateData.csv", true);
             for (MCTSNode child : node.children) {
                 double childScore = child.score;
                 double childN = child.visits;
@@ -41,7 +44,6 @@ public class StateGathererActionClassifier extends StateGatherer {
                 writerCSV.write(String.format("%.3f\t%s\n", score, csvLine));
             }
 
-            writerCSV.close();
         } catch (Exception e) {
             e.printStackTrace();
         }

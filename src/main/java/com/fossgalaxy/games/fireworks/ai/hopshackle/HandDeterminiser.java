@@ -157,9 +157,10 @@ public class HandDeterminiser {
         if (toChooseFrom.isEmpty()) {
             throw new AssertionError("no cards ");
         } else {
-            Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(agentID, state.getHand(agentID), toChooseFrom, state);
-            List<Integer> bindOrder = DeckUtils.bindOrder(possibleCards);
-            bindOrder = bindOrder.stream().filter(slot -> !possibleCards.get(slot).isEmpty()).collect(Collectors.toList());
+            Map<Integer, List<Card>> possibleCardsFinal = ConventionUtils.bindBlindCardWithConventions(agentID, state.getHand(agentID), toChooseFrom, state);
+            List<Integer> bindOrder = DeckUtils.bindOrder(possibleCardsFinal);
+            bindOrder = bindOrder.stream().filter(slot -> !possibleCardsFinal.get(slot).isEmpty()).collect(Collectors.toList());
+            Map<Integer, List<Card>> possibleCards = possibleCardsFinal;
             int attempts = 0;
             boolean success = false;
             do {
@@ -178,13 +179,14 @@ public class HandDeterminiser {
                     if (attempts > 5 && attempts < 9) {
                         // we give up
                         logger.info("Failed to bind cards in HandDeterminiser using Conventions - trying without");
-                        Map<Integer, List<Card>> possibleCards2 = DeckUtils.bindBlindCard(agentID, state.getHand(agentID), toChooseFrom);
-                        bindOrder = DeckUtils.bindOrder(possibleCards);
-                        bindOrder = bindOrder.stream().filter(slot -> !possibleCards2.get(slot).isEmpty()).collect(Collectors.toList());
+                        Map<Integer, List<Card>> possibleCardsFinal2 = DeckUtils.bindBlindCard(agentID, state.getHand(agentID), toChooseFrom);
+                        bindOrder = DeckUtils.bindOrder(possibleCardsFinal2);
+                        bindOrder = bindOrder.stream().filter(slot -> !possibleCardsFinal2.get(slot).isEmpty()).collect(Collectors.toList());
+                        possibleCards = possibleCardsFinal2;
                     } else if (attempts > 8) {
                         // OK. We're really stuck
                         logger.info("That didn't work either");
-                        throw new AssertionError("Unable to bind cards to hand");
+                        throw e;
                     }
                 }
             } while (!success);

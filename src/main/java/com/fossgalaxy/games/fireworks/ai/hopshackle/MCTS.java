@@ -16,6 +16,7 @@ import com.fossgalaxy.games.fireworks.state.events.GameEvent;
 import com.fossgalaxy.games.fireworks.utils.DebugUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.reflect.generics.tree.Tree;
 
 import java.util.*;
 
@@ -164,8 +165,8 @@ public class MCTS implements Agent, HasGameOverProcessing {
         }
 
         if (stateGatherer != null) {
-            if (stateGatherer instanceof StateGathererFullTree) {
-                ((StateGathererFullTree) stateGatherer).processTree(root);
+            if (stateGatherer instanceof TreeProcessor) {
+                ((TreeProcessor) stateGatherer).processTree(root);
             } else {
                 stateGatherer.storeData(root, state, agentID);
             }
@@ -288,12 +289,12 @@ public class MCTS implements Agent, HasGameOverProcessing {
         while (!state.isGameOver() && moves < rolloutDepth && moves < movesLeft) {
             if (!state.getDeck().hasCardsLeft()) {
                 movesWithEmptyDeck++;
-                if (movesWithEmptyDeck > 4) {
-                    throw new AssertionError("WTF");
+                if (movesWithEmptyDeck > state.getPlayerCount()) {
+           //         throw new AssertionError("WTF");
                 }
             }
-            state.tick();
             Action action = selectActionForRollout(state, playerID);
+            state.tick();
             List<GameEvent> events = action.apply(playerID, state);
             if (logger.isTraceEnabled()) {
                 logger.trace(String.format("Player %d, Rollout: %s", playerID, action));

@@ -12,7 +12,7 @@ public class StateGathererMonteCarlo extends StateGatherer implements HasGameOve
 
     @Override
     public void storeData(MCTSNode node, GameState gameState, int playerID) {
-        Map<String, Double> features = extractFeatures(gameState, playerID);
+        Map<String, Double> features = extractFeatures(gameState, playerID, true);
         if (logger.isDebugEnabled()) logger.debug(asCSVLine(features));
         experienceData.add(features);
     }

@@ -20,17 +20,17 @@ import java.util.UUID;
  * A basic runner for the game of Hanabi.
  */
 public class GameRunner {
-    private static final int RULE_STRIKES = 1; //how many times can a player return an illegal move before we give up?
-    private static final int[] HAND_SIZE = {-1, -1, 5, 5, 4, 4};
-    private final Logger logger = LoggerFactory.getLogger(com.fossgalaxy.games.fireworks.GameRunner.class);
-    private final String gameID;
+    protected static final int RULE_STRIKES = 1; //how many times can a player return an illegal move before we give up?
+    protected static final int[] HAND_SIZE = {-1, -1, 5, 5, 4, 4};
+    protected final Logger logger = LoggerFactory.getLogger(com.fossgalaxy.games.fireworks.GameRunner.class);
+    protected final String gameID;
     protected final Player[] players;
     protected final GameState state;
 
-    private int nPlayers;
-    private int moves;
+    protected int nPlayers;
+    protected int moves;
 
-    private int nextPlayer;
+    protected int nextPlayer;
 
     /**
      * Create a game runner with a given ID and a number of players.
@@ -126,7 +126,7 @@ public class GameRunner {
         DebugUtils.printState(logger, state);
     }
 
-    private long getTick() {
+    protected long getTick() {
         return System.currentTimeMillis();
     }
 
@@ -201,6 +201,7 @@ public class GameRunner {
                     state.getInfomation(), strikes, System.currentTimeMillis() - startTime);
         } catch (Exception ex) {
             logger.error("the game went bang", ex);
+            ex.printStackTrace();
             return new GameStats(gameID, players.length, state.getScore(), state.getLives(), moves,
                     state.getInfomation(), 1, System.currentTimeMillis() - startTime);
         }

@@ -3,18 +3,18 @@ import com.fossgalaxy.games.fireworks.ai.*;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.*;
 
-public class Hopshackle implements Agent {
+public class MonteCarloNN implements Agent {
 
     static EvalFnAgent valueAgent;
 
     MCTSRuleInfoSetFullExpansion actualBrain;
 
-    public Hopshackle() {
+    public MonteCarloNN() {
         if (valueAgent == null) {
             try {
                 ClassLoader classLoader = getClass().getClassLoader();
-                HopshackleNN brain = HopshackleNN.createFromStream(classLoader.getResourceAsStream("Tree_rnd_02.params"));
-                valueAgent = new EvalFnAgent(brain);
+                HopshackleNN brain = HopshackleNN.createFromStream(classLoader.getResourceAsStream("Tree_rnd2_01.params"));
+                valueAgent = new EvalFnAgent(brain, 0.0, true);
             } catch (Exception e) {
                 System.out.println("Error when reading in Model " + e.toString());
                 e.printStackTrace();

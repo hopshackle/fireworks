@@ -17,6 +17,12 @@ import com.fossgalaxy.games.fireworks.state.actions.TellValue;
  */
 public class TellDispensable extends AbstractTellRule {
 
+    private boolean avoidConventionalTells;
+
+    public TellDispensable(boolean avoidConventionalTells) {
+        this.avoidConventionalTells = avoidConventionalTells;
+    }
+
     @Override
     public Action execute(int playerID, GameState state) {
         // need to inform all players of their hands
@@ -31,7 +37,7 @@ public class TellDispensable extends AbstractTellRule {
                 if (knownColour == null) {
                     if (HandUtils.isSafeBecauseFiveAlreadyPlayed(state, actualColour)) {
                         Action option = new TellColour(player, actualColour);
-                        if (!ConventionUtils.isAConventionalTell(option, state, playerID))
+                        if (!avoidConventionalTells || !ConventionUtils.isAConventionalTell(option, state, playerID))
                             return option;
                     }
                 }
@@ -40,14 +46,14 @@ public class TellDispensable extends AbstractTellRule {
                 if (knownValue == null) {
                     if (HandUtils.isSafeBecauseValueLowerThanMinOnTable(state, actualValue)) {
                         Action option = new TellValue(player, actualValue);
-                        if (!ConventionUtils.isAConventionalTell(option, state, playerID))
+                        if (!avoidConventionalTells || !ConventionUtils.isAConventionalTell(option, state, playerID))
                             return option;
                     }
                 }
                 if (knownColour == null ^ knownValue == null) {
                     if (HandUtils.isSafeBecauseValueLowerThanPlayed(state, actualColour, actualValue)) {
                         Action option = (knownColour == null) ? new TellColour(player, actualColour) : new TellValue(player, actualValue);
-                        if (!ConventionUtils.isAConventionalTell(option, state, playerID))
+                        if (!avoidConventionalTells || !ConventionUtils.isAConventionalTell(option, state, playerID))
                             return option;
                     }
                 }

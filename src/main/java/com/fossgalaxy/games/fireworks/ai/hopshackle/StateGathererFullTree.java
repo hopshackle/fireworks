@@ -9,21 +9,24 @@ import com.fossgalaxy.games.fireworks.state.actions.PlayCard;
 import java.io.*;
 import java.util.*;
 
-public class StateGathererFullTree extends StateGatherer {
+public class StateGathererFullTree extends StateGatherer implements TreeProcessor {
 
-    private int VISIT_THRESHOLD;
+    protected int VISIT_THRESHOLD;
     protected FileWriter writerCSV;
-    private int MAX_DEPTH;
+    protected int MAX_DEPTH;
+    protected String filename;
 
     public StateGathererFullTree(int visitThreshold, int depth) {
         VISIT_THRESHOLD = visitThreshold;
         MAX_DEPTH = depth;
+        filename = "/TreeData.csv";
     }
 
+    @Override
     public void processTree(MCTSNode root) {
         if (root.visits > VISIT_THRESHOLD) {
             try {
-                writerCSV = new FileWriter(fileLocation + "/TreeData.csv", true);
+                writerCSV = new FileWriter(fileLocation + filename, true);
                 processNode(root);
                 writerCSV.close();
             } catch (Exception e) {
@@ -38,7 +41,7 @@ public class StateGathererFullTree extends StateGatherer {
                 */
     }
 
-    private void processNode(MCTSNode node) {
+    protected void processNode(MCTSNode node) {
         if (node.getDepth() > MAX_DEPTH) return;
         for (MCTSNode child : node.children) {
             if (child.visits >= VISIT_THRESHOLD) {
@@ -81,7 +84,7 @@ public class StateGathererFullTree extends StateGatherer {
     public void storeData(MCTSNode node, GameState state, int playerID) {
         // target is the increase in game score from the starting state to game end on taking this action
         double target = ((node.score / node.visits) - state.getScore()) / 25.0;
-        Map<String, Double> features = extractFeaturesWithRollForward(state, node.moveToState, playerID);
+        Map<String, Double> features = extractFeaturesWithRollForward(state, node.moveToState, playerID, true);
         String csvLine = asCSVLine(features);
         try {
             writerCSV.write(String.format("%.3f\t%s\n", target, csvLine));

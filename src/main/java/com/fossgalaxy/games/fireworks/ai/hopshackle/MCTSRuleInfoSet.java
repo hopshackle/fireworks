@@ -12,31 +12,46 @@ import java.util.*;
 public class MCTSRuleInfoSet extends MCTSInfoSet {
 
     public static final List<Rule> allRules = new ArrayList<>();
+    public static final List<Rule> allRulesWithoutConventions = new ArrayList<>();
 
     static {
-  //      allRules.add(new OsawaDiscard());
-  //      allRules.add(new DiscardHighest());
-  //      allRules.add(new TellAboutOnes());
-        allRules.add(new TellNextPlayerAboutSingleUsefulCard());
         ConventionUtils.singleTouchOnNextPlayer = true;
-        allRules.add(new TellMostInformation(true));
-        allRules.add(new TellAnyoneAboutUsefulCard());
-        allRules.add(new TellDispensable());
-   //     allRules.add(new TellPlayableCardOuter());
-        allRules.add(new TellIllInformed());
+        allRules.add(new TellNextPlayerAboutSingleUsefulCard());
+  //      ConventionUtils.singleTouchOnPreviousPlayer = true;
+  //      allRules.add(new TellPreviousPlayerAboutSingleDiscardableCard());
+        allRules.add(new TellMostInformation(true, true));
+        allRules.add(new TellAnyoneAboutUsefulCard(true));
+        allRules.add(new TellDispensable(true));
+        allRules.add(new TellIllInformed(true));
         allRules.add(new CompleteTellUsefulCard());
         allRules.add(new CompleteTellDispensableCard());
-   //     allRules.add(new TellFinesse());
-    //    allRules.add(new PlaySafeCard());
+        allRules.add(new CompleteTellCurrentlyNotPlayableCard());
         allRules.add(new PlayProbablySafeCard(0.7));
         allRules.add(new PlayProbablySafeLateGameCard(0.4, 5));
-   //     allRules.add(new PlayFinesse());
-   //     allRules.add(new DiscardProbablyUselessCard(0.8));
-    //    allRules.add(new DiscardOldestFirst());
-   //     allRules.add(new DiscardOldestNoInfoFirst());
-  //      allRules.add(new DiscardLeastLikelyToBeNecessary());
+        //     allRules.add(new DiscardProbablyUselessCard(0.8));
+        //    allRules.add(new DiscardOldestFirst());
+        //     allRules.add(new DiscardOldestNoInfoFirst());
+        //      allRules.add(new DiscardLeastLikelyToBeNecessary());
         allRules.add(new DiscardProbablyUselessCard(0.0));
-  //      allRules.add(new TellFives());
+        //      allRules.add(new PlayBestCardIfTwoPlayerAndCannotDiscard());
+        //      allRules.add(new TellFives());
+
+        allRulesWithoutConventions.add(new TellMostInformation(true, false));
+        allRulesWithoutConventions.add(new TellAnyoneAboutUsefulCard(false));
+        allRulesWithoutConventions.add(new TellDispensable(false));
+        allRulesWithoutConventions.add(new TellIllInformed(false));
+        allRulesWithoutConventions.add(new CompleteTellUsefulCard());
+        allRulesWithoutConventions.add(new CompleteTellDispensableCard());
+        allRulesWithoutConventions.add(new CompleteTellCurrentlyNotPlayableCard());
+        allRulesWithoutConventions.add(new PlayProbablySafeCard(0.7));
+        allRulesWithoutConventions.add(new PlayProbablySafeLateGameCard(0.4, 5));
+        //     allRules.add(new DiscardProbablyUselessCard(0.8));
+        //    allRules.add(new DiscardOldestFirst());
+        //     allRules.add(new DiscardOldestNoInfoFirst());
+        //      allRules.add(new DiscardLeastLikelyToBeNecessary());
+        allRulesWithoutConventions.add(new DiscardProbablyUselessCard(0.0));
+        //      allRules.add(new PlayBestCardIfTwoPlayerAndCannotDiscard());
+        //      allRules.add(new TellFives());
     }
 
     /**

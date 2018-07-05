@@ -1,6 +1,7 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
+import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.GameState;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
@@ -19,24 +20,34 @@ public class EvalFnAgent implements Agent {
     private Logger logger = LoggerFactory.getLogger(EvalFnAgent.class);
     private HopshackleNN brain;
     private double temperature;
-    private boolean debug = true;
+    private boolean debug = false;
     private Random rand = new Random(47);
+    private boolean useConventions;
 
     @AgentConstructor("evalFn")
-    public EvalFnAgent(String modelLocation, double temp) {
+    public EvalFnAgent(String modelLocation, double temp, boolean conventions) {
         //Load the model
         temperature = temp;
-        debug = logger.isDebugEnabled();
+        useConventions = conventions;
+    //    debug = logger.isDebugEnabled();
         try {
-            brain = HopshackleNN.createFromStream(new FileInputStream(modelLocation));
+            if (modelLocation.startsWith("RES")) {
+                modelLocation = modelLocation.substring(3);
+                ClassLoader classLoader = getClass().getClassLoader();
+                brain = HopshackleNN.createFromStream(classLoader.getResourceAsStream(modelLocation));
+            } else {
+                brain = HopshackleNN.createFromStream(new FileInputStream(modelLocation));
+            }
         } catch (Exception e) {
             System.out.println("Error when reading in Model from " + modelLocation + ": " + e.toString());
             e.printStackTrace();
         }
     }
 
-    public EvalFnAgent(HopshackleNN brain) {
+    public EvalFnAgent(HopshackleNN brain, double temp, boolean conventions) {
         this.brain = brain;
+        temperature = temp;
+        useConventions = conventions;
     }
 
     @Override
@@ -49,9 +60,10 @@ public class EvalFnAgent implements Agent {
         Map<Action, Double> actionValues = getAllActionValues(agentID, gameState);
         if (temperature < 1e-4) {
             // we just pick the best
-            return actionValues.entrySet().stream()
-                    .max(Comparator.comparing(Map.Entry::getValue))
-                    .get().getKey();
+            Optional<Map.Entry<Action, Double>> retValue = actionValues.entrySet().stream()
+                    .max(Comparator.comparing(Map.Entry::getValue));
+            if (retValue.isPresent()) return retValue.get().getKey();
+            return null;
         }
         // otherwise we calculate a pdf
 
@@ -89,15 +101,13 @@ public class EvalFnAgent implements Agent {
     }
 
     private List<Action> getPossibleActions(int agentID, GameState state) {
-        //      List<Action> retValue = Utils.generateSuitableActions(agentID, state).stream()
-        //              .distinct().collect(Collectors.toList());
-        List<Action> retValue = MCTSRuleInfoSet.allRules.stream()
+        List<Rule> rules = useConventions ? MCTSRuleInfoSet.allRules : MCTSRuleInfoSet.allRulesWithoutConventions;
+        List<Action> retValue = rules.stream()
                 .filter(r -> r.canFire(agentID, state))
                 .map(r -> r.execute(agentID, state))
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
-
 
         return retValue.stream().filter(p -> {
             // this section should use Action.isLegal(). But that is broken for Play and Discard
@@ -126,12 +136,12 @@ public class EvalFnAgent implements Agent {
     }
 
     public double valueState(GameState state, Optional<Action> action, int agentID) {
-        Map<String, Double> features = StateGatherer.extractFeatures(state, agentID);
+        Map<String, Double> features = StateGatherer.extractFeatures(state, agentID, useConventions);
         if (action.isPresent())
-            features.putAll(StateGatherer.extractActionFeatures(action.get(), state, agentID));
+            features.putAll(StateGatherer.extractActionFeatures(action.get(), state, agentID, useConventions));
         double[] featureRepresentation = StateGatherer.featuresToArray(features);
         if (debug) {
-            logger.debug(Arrays.stream(featureRepresentation).mapToObj(d -> String.format(".3f", d)).collect(Collectors.joining("\t")));
+            logger.debug(Arrays.stream(featureRepresentation).mapToObj(d -> String.format("%.3f", d)).collect(Collectors.joining("\t")));
         }
         double[] output = brain.process(featureRepresentation);
         return output[0];

@@ -19,12 +19,14 @@ public class ClassifierFnAgent implements Agent {
     private Logger logger = LoggerFactory.getLogger(ClassifierFnAgent.class);
     private HopshackleNN brain;
     private double temperature;
+    private boolean useConventions;
     private boolean debug = true;
     private Random rand = new Random(47);
 
     @AgentConstructor("classFn")
-    public ClassifierFnAgent(String modelLocation, double temp) {
+    public ClassifierFnAgent(String modelLocation, double temp, boolean useConventions) {
         temperature = temp;
+        this.useConventions = useConventions;
         //Load the model
         try {
             brain = HopshackleNN.createFromStream(new FileInputStream(modelLocation));
@@ -42,6 +44,12 @@ public class ClassifierFnAgent implements Agent {
          */
 
         Map<Action, Double> actionValues = getAllActionValues(agentID, gameState);
+        if (temperature < 1e-4) {
+            // we just pick the best
+            return actionValues.entrySet().stream()
+                    .max(Comparator.comparing(Map.Entry::getValue))
+                    .get().getKey();
+        }
 
         final double LV = actionValues.values().stream().mapToDouble(i -> i).max().getAsDouble();
 
@@ -144,7 +152,7 @@ public class ClassifierFnAgent implements Agent {
     }
 
     public double[] valueState(GameState state, int agentID) {
-        Map<String, Double> features = StateGatherer.extractFeatures(state, agentID);
+        Map<String, Double> features = StateGatherer.extractFeatures(state, agentID, useConventions);
         double[] featureRepresentation = StateGatherer.featuresToArray(features);
         if (debug) {
             logger.debug(Arrays.stream(featureRepresentation).mapToObj(d -> String.format(".3f", d)).collect(Collectors.joining("\t")));

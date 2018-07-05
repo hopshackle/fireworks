@@ -26,8 +26,6 @@ public class MCTSRuleInfoSetPolicy extends MCTSRuleInfoSet {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         this.rolloutPolicy = rollout;
         // TODO: Parameterise this more elegantly in future
-        if (rollout instanceof ClassifierFnAgent)
-            expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.of((ClassifierFnAgent) rollout), Optional.empty());
         if (rollout instanceof EvalFnAgent)
             expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.empty(), Optional.of((EvalFnAgent) rollout));
     }
@@ -66,9 +64,9 @@ public class MCTSRuleInfoSetPolicy extends MCTSRuleInfoSet {
             LOG.error("warning, agent failed to make move: {}", ex);
             return super.selectActionForRollout(state, playerID);
         } catch (IllegalStateException ex) {
-            LOG.error("Problem with Rules in rollout {} for player {}", ex, playerID);
+            LOG.error("Problem with Rules in rollout {} for player {} using policy {}", ex, playerID, rolloutPolicy);
             DebugUtils.printState(LOG, state);
-            return new DiscardCard(0);
+            return super.selectActionForRollout(state, playerID);s
         }
     }
 

@@ -5,21 +5,22 @@ import com.fossgalaxy.games.fireworks.state.Card;
 import com.fossgalaxy.games.fireworks.state.GameState;
 import com.fossgalaxy.games.fireworks.state.Hand;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
+import com.fossgalaxy.games.fireworks.state.actions.TellColour;
 import com.fossgalaxy.games.fireworks.state.actions.TellValue;
 
 /**
- * Tell any other player about a card in their hand if it is useful in this situation.
+ * Created by piers on 25/04/17.
+ *
+ * Tells useful card prioritising the first instance that we can
+ * finish telling something, otherwise first instance that we can
+ * tell something
  */
-public class TellAnyoneAboutUsefulCard extends AbstractTellRule {
+public class CompleteTellCurrentlyNotPlayableCard extends AbstractTellRule {
 
-    private static boolean avoidConventionalTells;
-
-    public TellAnyoneAboutUsefulCard(boolean avoidConventionalTells) {
-        this.avoidConventionalTells = avoidConventionalTells;
-    }
 
     @Override
     public Action execute(int playerID, GameState state) {
+
 
         for (int i = 0; i < state.getPlayerCount(); i++) {
             int nextPlayer = (playerID + i) % state.getPlayerCount();
@@ -38,14 +39,19 @@ public class TellAnyoneAboutUsefulCard extends AbstractTellRule {
                 }
 
                 int currTable = state.getTableValue(card.colour);
-                if (card.value != currTable + 1) {
-                    continue;
+                if (card.value <= currTable + 1) {
+                    continue;// This is discardable, or immediately playable
                 }
 
-                for (Action a : ConventionUtils.tellMissing(hand, nextPlayer, slot)) {
-                    if (!avoidConventionalTells || !ConventionUtils.isAConventionalTell(a, state, playerID))
-                        return a;
+                // Can we uniquely identify the card?
+                if(hand.getKnownValue(slot) == null ^ hand.getKnownColour(slot) == null){
+                    if (hand.getKnownValue(slot) == null) {
+                        return new TellValue(nextPlayer, card.value);
+                    } else if (hand.getKnownColour(slot) == null) {
+                        return new TellColour(nextPlayer, card.colour);
+                    }
                 }
+
             }
         }
         return null;
