@@ -1,10 +1,14 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
+import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.osawa.rules.OsawaDiscard;
 import com.fossgalaxy.games.fireworks.ai.rule.*;
 import com.fossgalaxy.games.fireworks.ai.rule.TellAnyoneAboutUsefulCard;
 import com.fossgalaxy.games.fireworks.ai.rule.TellIllInformed;
 import com.fossgalaxy.games.fireworks.ai.rule.TellMostInformation;
+import com.fossgalaxy.games.fireworks.ai.rule.random.PlayProbablySafeCard;
+import com.fossgalaxy.games.fireworks.ai.rule.random.TellRandomly;
+import com.fossgalaxy.games.fireworks.ai.rule.simple.PlayIfCertain;
 import com.fossgalaxy.games.fireworks.annotations.AgentBuilderStatic;
 
 /**
@@ -40,6 +44,19 @@ public class BoardGameGeekFactory {
         pra.addRule(new DiscardLeastLikelyToBeNecessary());
         pra.addRule(new DiscardProbablyUselessCard(0.0));
 
+        return pra;
+    }
+
+    @AgentBuilderStatic("risky2")
+    public static Agent buildRiskyPlayer(double threshold) {
+        ProductionRuleAgent pra = new ProductionRuleAgent();
+        pra.addRule(new PlayIfCertain());
+        pra.addRule(new PlayProbablySafeCard(threshold));
+        pra.addRule(new TellAnyoneAboutUsefulCard());
+        pra.addRule(new TellMostInformation(true));
+        pra.addRule(new OsawaDiscard());
+        pra.addRule(new TellRandomly());
+        pra.addRule(new DiscardProbablyUselessCard(0.0));
         return pra;
     }
 

@@ -16,6 +16,8 @@ public class StateGathererWithTarget extends StateGatherer {
         for (Rule r : MCTSRuleInfoSet.allRules) {
             allTargets.add(r.getClass().getSimpleName());
         }
+        allTargets.add("PLAY_CARD");
+        allTargets.add("DISCARD_CARD");
     }
 
     public void storeData(MCTSNode node, GameState gameState, int playerID) {

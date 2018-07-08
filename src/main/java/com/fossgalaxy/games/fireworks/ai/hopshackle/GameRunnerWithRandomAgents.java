@@ -6,6 +6,8 @@ import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.players.Player;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
+import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
+import com.fossgalaxy.games.fireworks.state.actions.PlayCard;
 import com.fossgalaxy.games.fireworks.state.events.*;
 import com.fossgalaxy.games.fireworks.utils.AgentUtils;
 import com.fossgalaxy.games.fireworks.utils.DebugUtils;
@@ -32,10 +34,11 @@ public class GameRunnerWithRandomAgents extends GameRunner {
             "cautious",
             "flawed",
             "piers",
-            "risky[0.7]",
+            "risky2[0.7]",
             "vdb-paper",
             "evalFn[RESTree_rnd2_01.params:0.0:true]",
             "evalFn[RESTree_rnd2_01.params:0.0:false]",
+            "iggi2",
             "outer"
     };
 
@@ -110,6 +113,8 @@ public class GameRunnerWithRandomAgents extends GameRunner {
         for (Rule r : rulesTriggered) {
             features.put(r.getClass().getSimpleName(), 1.00);
         }
+        if (action instanceof PlayCard) features.put("PLAY_CARD", 1.00);
+        if (action instanceof DiscardCard) features.put("DISCARD_CARD", 1.00);
 
         try {
             FileWriter writerCSV = new FileWriter("hanabi/OpponentData.csv", true);

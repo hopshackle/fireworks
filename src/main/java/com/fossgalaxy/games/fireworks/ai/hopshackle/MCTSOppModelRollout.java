@@ -14,15 +14,15 @@ import java.io.FileInputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class MCTSPredictor extends MCTSRuleInfoSet {
+public class MCTSOppModelRollout extends MCTSRuleInfoSet {
 
     protected double[][] pdf;
     protected GameState lastState;
     protected int historyIndex = 0;
-    private HopshackleNN brain;
-    private Random rnd = new Random();
-    private List<Agent> opponentModelFullList = new ArrayList<>();
-    private List<Agent> opponentModels;
+    protected HopshackleNN brain;
+    protected Random rnd = new Random();
+    protected List<Agent> opponentModelFullList = new ArrayList<>();
+    protected List<Agent> opponentModels;
 
     {
         for (int i = 0; i < GameRunnerWithRandomAgents.agentDescriptors.length; i++) {
@@ -31,7 +31,7 @@ public class MCTSPredictor extends MCTSRuleInfoSet {
     }
 
     @AgentConstructor("mctsOpponentModel")
-    public MCTSPredictor(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String modelLocation) {
+    public MCTSOppModelRollout(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String modelLocation) {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         expansionPolicy = new RuleExpansionPolicyOpponentModel(logger, random, allRules);
@@ -324,7 +324,7 @@ public class MCTSPredictor extends MCTSRuleInfoSet {
 
         double[] lik = brain.process(featureData(event, determinisedLastState, playerID));
         // this is our pdf over the likely types
-    //       double[] lik = new double[]{0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.0, rnd.nextDouble(), rnd.nextDouble() + 0.5};
+        //     double[] lik = new double[]{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
         if (logger.isDebugEnabled()) {
             String logLikStr = Arrays.stream(lik).mapToObj(d -> String.format("%.3f", d)).collect(Collectors.joining("\t"));
             logger.debug(String.format("Likelihood is %s", logLikStr));
@@ -392,6 +392,8 @@ public class MCTSPredictor extends MCTSRuleInfoSet {
         for (Rule r : rulesTriggered) {
             features.put(r.getClass().getSimpleName(), 1.00);
         }
+        if (event instanceof CardPlayed) features.put("PLAY_CARD", 1.00);
+        if (event instanceof CardDiscarded) features.put("DISCARD_CARD", 1.00);
         List<Double> features1 = StateGatherer.allFeatures.stream()
                 .map(k -> features.getOrDefault(k, 0.00))
                 .collect(Collectors.toList());

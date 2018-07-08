@@ -66,7 +66,7 @@ public class MCTSRuleInfoSetPolicy extends MCTSRuleInfoSet {
         } catch (IllegalStateException ex) {
             LOG.error("Problem with Rules in rollout {} for player {} using policy {}", ex, playerID, rolloutPolicy);
             DebugUtils.printState(LOG, state);
-            return super.selectActionForRollout(state, playerID);s
+            return super.selectActionForRollout(state, playerID);
         }
     }
 
