@@ -2,12 +2,13 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
 import com.google.gson.*;
 import java.io.*;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public class HopshackleNN {
 
     enum ACTIVATION {
-        RELU, RECTIFIED_TANH
+        RELU, RECTIFIED_TANH, SOFTMAX
     }
 
     private ACTIVATION[] layers;
@@ -38,6 +39,7 @@ public class HopshackleNN {
         }
     }
 
+
     public double[] process(double[] data) {
         if (data.length != inputsByLayer[0])
             throw new AssertionError("Must have " + inputsByLayer[0] + " inputs instead of " + data.length);
@@ -62,9 +64,17 @@ public class HopshackleNN {
                     case RECTIFIED_TANH:
                         activation = Math.max(0, Math.tanh(activation));
                         break;
+                    case SOFTMAX:
+                        activation = Math.exp(activation);
+                        break;
                     default:
                 }
                 activationsByLayerAndNeuron[layer][neuron] = activation;
+            }
+            if (layers[layer] == ACTIVATION.SOFTMAX) {
+                // whole layer is linked
+                double totalActivation = Arrays.stream(activationsByLayerAndNeuron[layer]).sum();
+                for (int i = 0; i < activationsByLayerAndNeuron[layer].length; i++) activationsByLayerAndNeuron[layer][i] /= totalActivation;
             }
             input = activationsByLayerAndNeuron[layer]; // the input to the next layer
         }

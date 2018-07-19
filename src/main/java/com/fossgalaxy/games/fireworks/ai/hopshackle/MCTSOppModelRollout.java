@@ -63,6 +63,8 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
             lastState = new BasicState(state.getPlayerCount());
             historyIndex = 0;
             pdf = new double[state.getPlayerCount()][opponentModelFullList.size()];
+            for (int i = 0; i < state.getPlayerCount(); i++) pdf[i][9] = 5.0;
+            pdf[agentID][7] = 100.0;
         }
         updatePosteriorModel(state, agentID);
         lastState = state.getCopy();
@@ -323,8 +325,14 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         handDeterminiser = new HandDeterminiser(determinisedLastState, rootPlayer);
 
         double[] lik = brain.process(featureData(event, determinisedLastState, playerID));
+        // then normalise
+        double total = Arrays.stream(lik).reduce(0.0, Double::sum);
+        if (total < 1e-6) total = 1e-6;
+        for (int i = 0; i < lik.length; i++) lik[i] /= total;
         // this is our pdf over the likely types
-        //     double[] lik = new double[]{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
+        //      double[] lik = new double[]{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
+        //     double[] lik = new double[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0};
+
         if (logger.isDebugEnabled()) {
             String logLikStr = Arrays.stream(lik).mapToObj(d -> String.format("%.3f", d)).collect(Collectors.joining("\t"));
             logger.debug(String.format("Likelihood is %s", logLikStr));
@@ -441,6 +449,9 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
                     break;
                 }
             }
+        }
+        if (retValue.size() != pdf.length) {
+            throw new AssertionError("Not all players have a model");
         }
         return retValue;
     }

@@ -95,7 +95,7 @@ public class MCTSInfoSet extends MCTS {
             }
         }
 
-        if (logger.isInfoEnabled()) {
+        if (logger.isDebugEnabled()) {
             for (MCTSNode level1 : root.getChildren()) {
                 logger.info(String.format("Action: %s\tVisits: %d\tScore: %.3f", level1.getAction(), level1.visits, level1.score / level1.visits));
                 if (level1.rolloutScores.getN() > 0) {

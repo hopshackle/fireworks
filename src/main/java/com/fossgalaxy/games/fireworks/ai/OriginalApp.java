@@ -12,25 +12,23 @@ import java.util.Random;
 
 /**
  * Game runner for testing.
- *
+ * <p>
  * This will run a bunch of games with your agent so you can see how it does.
  */
-public class OriginalApp
-{
-    public static void main( String[] args )
-    {
-        int numPlayers = 4;
+public class OriginalApp {
+    public static void main(String[] args) {
         int numGames = 100;
         String agentName = "MonteCarloNN";
 
         Random random = new Random();
         StatsSummary statsSummary = new BasicStats();
 
-        for (int i=0; i<numGames; i++) {
+        for (int i = 0; i < numGames; i++) {
+            int numPlayers = ((int) (Math.random() * 4)) + 2;
             GameRunner runner = new GameRunner("test-game", numPlayers);
 
             //add your agents to the game
-            for (int j=0; j<numPlayers; j++) {
+            for (int j = 0; j < numPlayers; j++) {
                 // the player class keeps track of our state for us...
                 Player player = new AgentPlayer(agentName, AgentUtils.buildAgent(agentName));
                 runner.addPlayer(player);

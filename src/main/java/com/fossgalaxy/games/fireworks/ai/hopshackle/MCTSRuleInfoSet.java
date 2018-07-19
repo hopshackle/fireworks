@@ -33,7 +33,7 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
         //     allRules.add(new DiscardOldestNoInfoFirst());
         //      allRules.add(new DiscardLeastLikelyToBeNecessary());
         allRules.add(new DiscardProbablyUselessCard(0.0));
-    //   allRules.add(new PlayBestCardIfTwoPlayerAndCannotDiscard());
+        // allRules.add(new PlayBestCardIfTwoPlayerAndCannotDiscard());
         //      allRules.add(new TellFives());
 
         allRulesWithoutConventions.add(new TellMostInformation(true, false));

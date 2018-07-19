@@ -1,31 +1,35 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
+
 import com.fossgalaxy.games.fireworks.ai.*;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.*;
 
 public class MonteCarloNN implements Agent {
 
-    static EvalFnAgent valueAgent;
+    static EvalFnAgent[] valueAgent = new EvalFnAgent[5];
+    static boolean initialised = false;
 
-    MCTSRuleInfoSetFullExpansion actualBrain;
+    static MCTSRuleInfoSetFullExpansion[] actualBrains = new MCTSRuleInfoSetFullExpansion[5];
 
     public MonteCarloNN() {
-        if (valueAgent == null) {
+        if (!initialised) {
             try {
-                ClassLoader classLoader = getClass().getClassLoader();
-                HopshackleNN brain = HopshackleNN.createFromStream(classLoader.getResourceAsStream("Tree_rnd2_01.params"));
-                valueAgent = new EvalFnAgent(brain, 0.0, true);
+                for (int players = 2; players <= 5; players++) {
+                    ClassLoader classLoader = getClass().getClassLoader();
+                    HopshackleNN brain = HopshackleNN.createFromStream(classLoader.getResourceAsStream("Players_" + players + ".params"));
+                    valueAgent[players - 1] = new EvalFnAgent(brain, 0.0, true);
+                    actualBrains[players - 1] = new MCTSRuleInfoSetFullExpansion(0.03, 100, 3, 30, valueAgent[players - 1]);
+                }
             } catch (Exception e) {
                 System.out.println("Error when reading in Model " + e.toString());
                 e.printStackTrace();
             }
+            initialised = true;
         }
-        actualBrain = new MCTSRuleInfoSetFullExpansion(0.03, 100, 3, 30, valueAgent);
     }
-
 
     @Override
     public Action doMove(int i, GameState gameState) {
-        return actualBrain.doMove(i, gameState);
+        return actualBrains[gameState.getPlayerCount() - 1].doMove(i, gameState);
     }
 }
