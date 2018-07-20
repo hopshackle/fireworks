@@ -36,8 +36,8 @@ public class GameRunnerWithRandomAgents extends GameRunner {
             "piers",
             "risky2[0.7]",
             "vdb-paper",
-            "evalFn[RESTree_rnd2_01.params:0.0:true]",
-            "evalFn[RESTree_rnd2_01.params:0.0:false]",
+            "evalFn[RESPlayers_5.params:0.0:true]",
+            "evalFn[RESPlayers_5.params:0.0:false]",
             "iggi2",
             "outer"
     };

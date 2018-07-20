@@ -9,19 +9,8 @@ public class MonteCarloOppNN implements Agent {
     MCTSOppModelFE actualBrain;
 
     public MonteCarloOppNN() {
-        if (actualBrain == null) {
-            try {
-                for (int players = 2; players <= 5; players++) {
-                    ClassLoader classLoader = getClass().getClassLoader();
-                    HopshackleNN brain = HopshackleNN.createFromStream(classLoader.getResourceAsStream("Players_" + players + ".params"));
-                    actualBrain = new MCTSOppModelFE(0.03, 100, 3, 30,
-                            "RESOpponentModel.params", "RESPlayer_5.params");
-                }
-            } catch (Exception e) {
-                System.out.println("Error when reading in Model " + e.toString());
-                e.printStackTrace();
-            }
-        }
+        actualBrain = new MCTSOppModelFE(0.03, 100, 3, 30,
+                "RESOpponentModel.params", "RESPlayers_5.params");
     }
 
     @Override
