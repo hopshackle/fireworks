@@ -174,7 +174,8 @@ public class MCTSNode {
         MCTSNode bestChild = null;
 
         for (MCTSNode child : children) {
-            double childScore = child.score / child.visits + (random.nextDouble() * EPSILON);
+            //       double childScore = child.score / child.visits + (random.nextDouble() * EPSILON);
+            double childScore = child.visits + child.score / 1000.0 + (random.nextDouble() * EPSILON);
             if (childScore > bestScore) {
                 bestScore = childScore;
                 bestChild = child;

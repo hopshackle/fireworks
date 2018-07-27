@@ -43,8 +43,8 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
         allRulesWithoutConventions.add(new CompleteTellUsefulCard());
         allRulesWithoutConventions.add(new CompleteTellDispensableCard());
         allRulesWithoutConventions.add(new CompleteTellCurrentlyNotPlayableCard());
-        allRulesWithoutConventions.add(new PlayProbablySafeCard(0.0));
-    //    allRulesWithoutConventions.add(new PlayProbablySafeLateGameCard(0.4, 5));
+        allRulesWithoutConventions.add(new PlayProbablySafeCard(0.7));
+        allRulesWithoutConventions.add(new PlayProbablySafeLateGameCard(0.4, 5));
         //     allRules.add(new DiscardProbablyUselessCard(0.8));
         //    allRules.add(new DiscardOldestFirst());
         //     allRules.add(new DiscardOldestNoInfoFirst());

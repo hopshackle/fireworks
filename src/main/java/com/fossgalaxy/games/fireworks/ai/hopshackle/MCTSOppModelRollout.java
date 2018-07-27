@@ -1,8 +1,12 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
+import com.fossgalaxy.games.fireworks.ai.iggi.IGGIFactory;
 import com.fossgalaxy.games.fireworks.ai.mcts.IterationObject;
+import com.fossgalaxy.games.fireworks.ai.osawa.OsawaFactory;
 import com.fossgalaxy.games.fireworks.ai.rule.Rule;
+import com.fossgalaxy.games.fireworks.ai.vanDenBergh.VanDenBergh;
+import com.fossgalaxy.games.fireworks.ai.vanDenBergh.VanDenBerghFactory;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.*;
@@ -23,11 +27,31 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
     protected Random rnd = new Random();
     protected List<Agent> opponentModelFullList = new ArrayList<>();
     protected List<Agent> opponentModels;
-
+/*
+                "clivej2",
+                        "legal_random",
+                        "cautious",
+                        "flawed",
+                        "piers",
+                        "risky2[0.7]",
+                        "vdb-paper",
+                        "evalFn[RESPlayers_5.params:0.0:true]",
+                        "evalFn[RESPlayers_5.params:0.0:false]",
+                        "iggi2",
+                        "outer"
+  */
     {
-        for (int i = 0; i < GameRunnerWithRandomAgents.agentDescriptors.length; i++) {
-            opponentModelFullList.add(AgentUtils.buildAgent(GameRunnerWithRandomAgents.agentDescriptors[i]));
-        }
+        opponentModelFullList.add(BoardGameGeekFactory.buildCliveJ());
+        opponentModelFullList.add(IGGIFactory.buildRandom());
+        opponentModelFullList.add(IGGIFactory.buildCautious());
+        opponentModelFullList.add(IGGIFactory.buildFlawedPlayer());
+        opponentModelFullList.add(IGGIFactory.buildPiersPlayer());
+        opponentModelFullList.add(BoardGameGeekFactory.buildRiskyPlayer(0.7));
+        opponentModelFullList.add(VanDenBerghFactory.buildAgent());
+        opponentModelFullList.add(new EvalFnAgent("RESPlayers_5.params", 0.0, true));
+        opponentModelFullList.add(new EvalFnAgent("RESPlayers_5.params", 0.0, false));
+        opponentModelFullList.add(IGGIFactory.buildIGGI2Player());
+        opponentModelFullList.add(OsawaFactory.buildOuterState());
     }
 
     @AgentConstructor("mctsOpponentModel")
