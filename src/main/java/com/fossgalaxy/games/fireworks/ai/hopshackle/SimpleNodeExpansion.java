@@ -30,6 +30,16 @@ public class SimpleNodeExpansion implements ExpansionPolicy{
     }
 
     @Override
+    public MCTSNode createRoot(GameState refState, int previousAgentID, double C) {
+        Collection<Action> allActions = Utils.generateAllActions((previousAgentID + 1) % refState.getPlayerCount(), refState.getPlayerCount());
+        MCTSNode root = new MCTSNode(
+                null,
+                previousAgentID,
+                null, C, allActions);
+        return root;
+    }
+
+    @Override
     public Action selectActionForExpand(GameState state, MCTSNode node, int agentID) {
         Collection<Action> legalActions = node.getLegalUnexpandedMoves(state, agentID);
         if (legalActions.isEmpty()) {

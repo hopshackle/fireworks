@@ -103,8 +103,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
             movesLeft = Integer.MAX_VALUE;
         }
 
-        MCTSNode root = createNode(null, (agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), null);
-        root.setReferenceState(state.getCopy());
+        MCTSNode root = createRoot((agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), state);
 
         Map<Integer, List<Card>> possibleCards = DeckUtils.bindCard(agentID, state.getHand(agentID), state.getDeck().toList());
         List<Integer> bindOrder = DeckUtils.bindOrder(possibleCards);
@@ -183,8 +182,10 @@ public class MCTS implements Agent, HasGameOverProcessing {
         return expansionPolicy.expand(parent, state);
     }
 
-    protected MCTSNode createNode(MCTSNode parent, int previousAgentID, Action moveTo) {
-        return expansionPolicy.createNode(parent, previousAgentID, moveTo, C);
+    protected MCTSNode createRoot(int previousAgentID, GameState state) {
+        MCTSNode root = expansionPolicy.createRoot(state, previousAgentID, C);
+        root.setReferenceState(state.getCopy());
+        return root;
     }
 
     protected void logDebugGameState(GameState state, int agentID) {

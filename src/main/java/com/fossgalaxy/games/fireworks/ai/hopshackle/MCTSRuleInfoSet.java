@@ -22,7 +22,7 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
         allRules.add(new TellMostInformation(true, true));
         allRules.add(new TellAnyoneAboutUsefulCard(true));
         allRules.add(new TellDispensable(true));
-        allRules.add(new TellIllInformed(true));
+   //     allRules.add(new TellIllInformed(true));
         allRules.add(new CompleteTellUsefulCard());
         allRules.add(new CompleteTellDispensableCard());
         allRules.add(new CompleteTellCurrentlyNotPlayableCard());
@@ -39,7 +39,7 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
         allRulesWithoutConventions.add(new TellMostInformation(true, false));
         allRulesWithoutConventions.add(new TellAnyoneAboutUsefulCard(false));
         allRulesWithoutConventions.add(new TellDispensable(false));
-        allRulesWithoutConventions.add(new TellIllInformed(false));
+   //     allRulesWithoutConventions.add(new TellIllInformed(false));
         allRulesWithoutConventions.add(new CompleteTellUsefulCard());
         allRulesWithoutConventions.add(new CompleteTellDispensableCard());
         allRulesWithoutConventions.add(new CompleteTellCurrentlyNotPlayableCard());

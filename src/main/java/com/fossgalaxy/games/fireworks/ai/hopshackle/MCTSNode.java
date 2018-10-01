@@ -222,20 +222,26 @@ public class MCTSNode {
     }
 
     public boolean fullyExpanded(GameState state, int nextId) {
-        if (allUnexpandedActions.isEmpty()) {
-            return true;
-        }
-
-        for (Action action : allUnexpandedActions) {
-            if (action.isLegal(nextId, state)) {
-                return false;
-            }
-        }
-        return true;
+        return getLegalUnexpandedMoves(state, nextId).isEmpty();
     }
 
     public Collection<Action> getLegalUnexpandedMoves(GameState state, int nextId) {
-        return allUnexpandedActions.stream().filter(action -> action.isLegal(nextId, state)).collect(Collectors.toList());
+        return allUnexpandedActions.stream()
+                .filter(p -> {
+                    // this section should use Action.isLegal(). But that is broken for Play and Discard
+                    // as it uses hand.getCard() != null, which will always be true for the acting player
+                    // when we use the state provided by GameRunsner
+                    if (p instanceof PlayCard) {
+                        int slot = ((PlayCard) p).slot;
+                        return state.getHand(nextId).hasCard(slot);
+                    } else if (p instanceof DiscardCard) {
+                        int slot = ((DiscardCard) p).slot;
+                        return state.getHand(nextId).hasCard(slot) && state.getInfomation() != state.getStartingInfomation();
+                    } else {
+                        return p.isLegal(nextId, state);
+                    }
+                })
+                .collect(Collectors.toList());
     }
 
     public Collection<Action> getAllActionsExpandedAlready() {

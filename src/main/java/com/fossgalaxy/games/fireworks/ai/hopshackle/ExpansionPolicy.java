@@ -18,4 +18,9 @@ public interface ExpansionPolicy {
     public MCTSNode expand(MCTSNode parent, GameState state);
 
     public MCTSNode createNode(MCTSNode parent, int previousAgentID, Action moveTo, double C);
+
+    /*
+    To be used to create the root node in a tree...the one that does not have a parent
+     */
+    public MCTSNode createRoot(GameState startState, int previousAgentID, double C);
 }

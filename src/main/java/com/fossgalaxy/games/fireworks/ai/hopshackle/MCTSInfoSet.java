@@ -65,8 +65,7 @@ public class MCTSInfoSet extends MCTS {
             movesLeft = Integer.MAX_VALUE;
         }
 
-        MCTSNode root = createNode(null, (agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), null);
-        root.setReferenceState(state.getCopy());
+        MCTSNode root = createRoot((agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), state);
 
         logDebugGameState(state, agentID);
 
