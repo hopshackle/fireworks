@@ -67,7 +67,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
      * @param treeDepthMul
      * @param timeLimit    in ms
      */
-    @AgentConstructor("mcts")
+    @AgentConstructor("mcts-naive")
     public MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
 //        this.roundLength = roundLength;
         this.rolloutDepth = rolloutDepth;
