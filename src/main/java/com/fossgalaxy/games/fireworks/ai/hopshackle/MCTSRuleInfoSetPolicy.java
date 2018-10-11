@@ -21,7 +21,7 @@ public class MCTSRuleInfoSetPolicy extends MCTSRuleInfoSet {
         this.rolloutPolicy = rolloutPolicy;
     }
 
-    @AgentConstructor("mctsRuleISPolicy")
+    @AgentConstructor("hs-mctsRuleMRPolicy")
     public MCTSRuleInfoSetPolicy(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         this.rolloutPolicy = rollout;

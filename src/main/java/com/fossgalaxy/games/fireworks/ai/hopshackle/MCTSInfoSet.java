@@ -47,7 +47,7 @@ public class MCTSInfoSet extends MCTS {
      * @param treeDepthMul
      * @param timeLimit    in ms
      */
-    @AgentConstructor("mctsIS")
+    @AgentConstructor("hs-mctsMR")
     public MCTSInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
