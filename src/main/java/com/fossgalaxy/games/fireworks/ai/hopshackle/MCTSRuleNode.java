@@ -96,7 +96,7 @@ public class MCTSRuleNode extends MCTSNode {
                 .filter(p -> {
                     // this section should use Action.isLegal(). But that is broken for Play and Discard
                     // as it uses hand.getCard() != null, which will always be true for the acting player
-                    // when we use the state provided by GameRunsner
+                    // when we use the state provided by GameRunner
                     if (p instanceof PlayCard) {
                         int slot = ((PlayCard) p).slot;
                         return state.getHand(nextID).hasCard(slot);

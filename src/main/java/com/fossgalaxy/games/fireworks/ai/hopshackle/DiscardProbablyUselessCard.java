@@ -5,6 +5,7 @@ import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.HandUtils;
 import com.fossgalaxy.games.fireworks.state.Card;
 import com.fossgalaxy.games.fireworks.state.GameState;
+import com.fossgalaxy.games.fireworks.state.Hand;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
 import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
 
@@ -48,7 +49,13 @@ public class DiscardProbablyUselessCard extends AbstractDiscardRule {
                 bestSoFar = probability;
             }
         }
-        if(bestSlot == -1) return null;
+        if(bestSlot == -1) {
+            // discard the first card in hand ...
+            Hand h = state.getHand(playerID);
+            for (int slot = 0; slot < h.getSize(); slot++) {
+                if (h.hasCard(slot)) return new DiscardCard(slot);
+            }
+        }
         return new DiscardCard(bestSlot);
     }
 

@@ -16,7 +16,6 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
 
     static {
         allRules.add(new TellNextPlayerAboutSingleUsefulCard());
-        //      ConventionUtils.singleTouchOnPreviousPlayer = true;
         //      allRules.add(new TellPreviousPlayerAboutSingleDiscardableCard());
         allRules.add(new TellMostInformation(true, true));
         allRules.add(new TellAnyoneAboutUsefulCard(true));
@@ -30,7 +29,7 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
         //     allRules.add(new DiscardProbablyUselessCard(0.8));
         //    allRules.add(new DiscardOldestFirst());
         //     allRules.add(new DiscardOldestNoInfoFirst());
-        //      allRules.add(new DiscardLeastLikelyToBeNecessary());
+        // allRules.add(new DiscardLeastLikelyToBeNecessary());
         allRules.add(new DiscardProbablyUselessCard(0.0));
         // allRules.add(new PlayBestCardIfTwoPlayerAndCannotDiscard());
         //      allRules.add(new TellFives());
