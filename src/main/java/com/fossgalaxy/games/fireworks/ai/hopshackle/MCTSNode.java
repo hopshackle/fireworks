@@ -136,7 +136,7 @@ public class MCTSNode {
             incrementParentVisit(moveToMake);
             double childScore = child.getUCTValue() + (random.nextDouble() * EPSILON);
             if (logger.isDebugEnabled())
-                logger.debug(String.format("\tUCT: %.2f from base %.2f for %s", childScore, child.score / child.visits, moveToMake));
+                logger.debug(String.format("\tUCT: %.2f from base %.2f (%d visits) for %s", childScore, child.score / child.visits, child.visits, moveToMake));
 
             if (childScore > bestScore) {
                 bestScore = childScore;

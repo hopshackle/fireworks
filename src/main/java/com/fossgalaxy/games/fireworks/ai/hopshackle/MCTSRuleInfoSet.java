@@ -15,7 +15,6 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
     public static final List<Rule> allRulesWithoutConventions = new ArrayList<>();
 
     static {
-        ConventionUtils.singleTouchOnNextPlayer = true;
         allRules.add(new TellNextPlayerAboutSingleUsefulCard());
         //      ConventionUtils.singleTouchOnPreviousPlayer = true;
         //      allRules.add(new TellPreviousPlayerAboutSingleDiscardableCard());

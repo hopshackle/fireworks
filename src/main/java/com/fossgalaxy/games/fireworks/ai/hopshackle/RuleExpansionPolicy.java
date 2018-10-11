@@ -1,5 +1,6 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
+import com.fossgalaxy.games.fireworks.ai.iggi.Utils;
 import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.state.GameState;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
@@ -25,4 +26,15 @@ public class RuleExpansionPolicy extends SimpleNodeExpansion {
 
         return root;
     }
+
+
+    @Override
+    public MCTSNode createRoot(GameState refState, int previousAgentID, double C) {
+        MCTSNode root = new MCTSRuleNode(
+                null,
+                previousAgentID,
+                null, C, allRules);
+        return root;
+    }
+
 }
