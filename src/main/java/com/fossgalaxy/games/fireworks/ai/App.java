@@ -1,6 +1,12 @@
 package com.fossgalaxy.games.fireworks.ai;
 
 import com.fossgalaxy.games.fireworks.ai.hopshackle.*;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTS;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.*;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsSummary;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsCollator;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.BasicStats;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.GameStats;
 import com.fossgalaxy.games.fireworks.players.Player;
 import com.fossgalaxy.games.fireworks.utils.AgentUtils;
 

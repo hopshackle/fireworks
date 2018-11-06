@@ -1,7 +1,9 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
-import com.fossgalaxy.games.fireworks.ai.AgentPlayer;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSRuleInfoSet;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGatherer;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGathererWithTarget;
 import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.players.Player;
 import com.fossgalaxy.games.fireworks.state.*;
@@ -10,9 +12,6 @@ import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
 import com.fossgalaxy.games.fireworks.state.actions.PlayCard;
 import com.fossgalaxy.games.fireworks.state.events.*;
 import com.fossgalaxy.games.fireworks.utils.AgentUtils;
-import com.fossgalaxy.games.fireworks.utils.DebugUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.FileWriter;
 import java.util.*;

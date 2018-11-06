@@ -1,6 +1,7 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
 import com.fossgalaxy.games.fireworks.ai.*;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.HasGameOverProcessing;
 import com.fossgalaxy.games.fireworks.state.GameState;
 
 /*
