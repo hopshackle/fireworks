@@ -1,4 +1,4 @@
-package com.fossgalaxy.games.fireworks.ai.hopshackle;
+package com.fossgalaxy.games.fireworks.ai.hopshackle.rules;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.osawa.rules.OsawaDiscard;
