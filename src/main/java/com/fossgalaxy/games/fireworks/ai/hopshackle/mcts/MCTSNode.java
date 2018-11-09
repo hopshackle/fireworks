@@ -1,5 +1,6 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
+import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.AllPlayerDeterminiser;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsSummary;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.BasicStats;
 import com.fossgalaxy.games.fireworks.state.Card;
@@ -12,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -20,12 +22,14 @@ import java.util.stream.Collectors;
 public class MCTSNode {
 
     public static final double DEFAULT_EXP_CONST = Math.sqrt(2);
+    public static final AtomicLong idFountain = new AtomicLong(1);
 
     protected static final int MAX_SCORE = 25;
     protected static final double EPSILON = 1e-6;
     protected static final boolean DISCOUNT_ENABLED = false;
 
     public final double expConst;
+    private final long uniqueID = idFountain.getAndIncrement();
     private GameState referenceState;
     protected final Action moveToState;
     protected final int agentId;
@@ -105,19 +109,33 @@ public class MCTSNode {
         return children;
     }
 
-    public void backup(double score) {
+    public void backup(double score, AllPlayerDeterminiser apd) {
         MCTSNode current = this;
+        int iterations = 0;
+        MCTSNode last = null;
         while (current != null) {
             if (DISCOUNT_ENABLED) {
                 current.score += score * Math.pow(0.95, current.getDepth() - 1.0);
             } else {
                 current.score += score;
             }
+            iterations++;
             current.visits++;
-            current = current.parent;
+            last = current;
+            if (apd != null && apd.getParentNode() == current) {
+                current = null;
+                // stop back-propagation
+            } else {
+                current = current.parent;
+            }
         }
+        logger.debug(String.format("Stopping back-prop after %d nodes stopping at %s", iterations, last.toString()));
     }
 
+
+    /*
+    Called when we descend the tree in select()
+     */
     public MCTSNode getUCTNode(GameState state) {
         double bestScore = -Double.MAX_VALUE;
         MCTSNode bestChild = null;
@@ -139,7 +157,8 @@ public class MCTSNode {
             incrementParentVisit(moveToMake);
             double childScore = child.getUCTValue() + (random.nextDouble() * EPSILON);
             if (logger.isDebugEnabled())
-                logger.debug(String.format("\tUCT: %.2f from base %.2f (%d visits) for %s", childScore, child.score / child.visits, child.visits, moveToMake));
+                logger.debug(String.format("\tUCT: %.2f from base %.2f (%d/%d complete/eligible visits) for %s", childScore, child.score / child.visits,
+                        child.visits, parentWasVisitedAndIWasLegal.get(moveToMake), moveToMake));
 
             if (childScore > bestScore) {
                 bestScore = childScore;
@@ -191,7 +210,7 @@ public class MCTSNode {
 
     @Override
     public String toString() {
-        return String.format("NODE(%d: %s %f)", getDepth(), moveToState, score);
+        return String.format("NODE %d (%d: %s %f)", uniqueID, getDepth(), moveToState, score);
     }
 
     public boolean containsChild(Action moveToChild) {
@@ -277,7 +296,7 @@ public class MCTSNode {
      * Keep track of stats for rollouts.
      *
      * @param moves The number of moves made for a given rollout
-     * @param score The total score achived at the end of the rollout
+     * @param score The total score achieved at the end of the rollout
      */
     public void backupRollout(int moves, int score) {
         rolloutMoves.add(moves);

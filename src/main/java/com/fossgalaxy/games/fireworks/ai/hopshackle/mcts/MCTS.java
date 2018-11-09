@@ -175,7 +175,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
             if (nodeExpanded) nodesExpanded++;
 
             double score = rollout(currentState, current, movesLeft - current.getDepth());
-            current.backup(score);
+            current.backup(score, null);
             if (calcTree) {
                 System.out.println(root.printD3());
             }
@@ -237,7 +237,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
             }
             current = next;
 
-            int agent = current.getAgent();
+            int agent = current.getAgentId();
 
             Action action = current.getAction();
             logger.trace("Selected action " + action + " for player " + agent);
@@ -276,7 +276,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
 
     protected double rollout(GameState state, MCTSNode current, int movesLeft) {
 
-        int playerID = (current.getAgent() + 1) % state.getPlayerCount();
+        int playerID = (current.getAgentId() + 1) % state.getPlayerCount();
         // we rollout from current, which records the agent who acted to reach it
         int moves = 0;
         int movesWithEmptyDeck = 0;

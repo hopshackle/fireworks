@@ -65,7 +65,7 @@ public class MCTSInfoSet extends MCTS {
 
             MCTSNode current = select(root, currentState, movesLeft);
             // reset to known hand values before rollout
-            handDeterminiser.reset((current.getAgent() + 1) % currentState.getPlayerCount(), currentState);
+            handDeterminiser.reset((current.getAgentId() + 1) % currentState.getPlayerCount(), currentState);
 
             if (current.getDepth() > deepestNode) deepestNode = current.getDepth();
             allNodeDepths += current.getDepth();
@@ -73,7 +73,7 @@ public class MCTSInfoSet extends MCTS {
 
             double score = rollout(currentState, current, movesLeft - current.getDepth());
             if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
-            current.backup(score);
+            current.backup(score, null);
             if (calcTree) {
                 System.out.println(root.printD3());
             }
@@ -90,7 +90,7 @@ public class MCTSInfoSet extends MCTS {
             MCTSNode next;
             movesLeft--;
             // determinise hand before decision is made
-            int agentAboutToAct = (current.getAgent() + 1) % state.getPlayerCount();
+            int agentAboutToAct = (current.getAgentId() + 1) % state.getPlayerCount();
             handDeterminiser.determiniseHandFor(agentAboutToAct, state);
 
             // put active hand into deck for decision making
@@ -138,13 +138,13 @@ public class MCTSInfoSet extends MCTS {
                 return current;
             }
 
-            if (next.getAgent() != agentAboutToAct) {
+            if (next.getAgentId() != agentAboutToAct) {
                 throw new AssertionError("WTF");
             }
 
             current = next;
 
-            int agent = current.getAgent(); // this is the acting agent
+            int agent = current.getAgentId(); // this is the acting agent
 
             // we then apply the action to state, and re-determinise the hand for the next agent
             Action action = current.getAction();

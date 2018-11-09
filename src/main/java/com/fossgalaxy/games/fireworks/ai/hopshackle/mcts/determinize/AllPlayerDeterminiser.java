@@ -3,13 +3,11 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize;
 import com.fossgalaxy.games.fireworks.GameStats;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.ConventionUtils;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
-import com.fossgalaxy.games.fireworks.state.Card;
-import com.fossgalaxy.games.fireworks.state.Deck;
-import com.fossgalaxy.games.fireworks.state.GameState;
-import com.fossgalaxy.games.fireworks.state.Hand;
+import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.*;
-import com.fossgalaxy.games.fireworks.state.actions.Action;
+import com.fossgalaxy.games.fireworks.state.actions.*;
 import com.fossgalaxy.games.fireworks.state.events.GameEvent;
+import com.sun.xml.internal.ws.policy.spi.AssertionCreationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,14 +17,16 @@ import java.util.stream.*;
 public class AllPlayerDeterminiser {
 
     protected GameState[] determinisationsByPlayer;
+    protected MCTSNode parentNode;
     protected int root;
-    private static Logger logger = LoggerFactory.getLogger(HandDeterminiser.class);
+    private static Logger logger = LoggerFactory.getLogger(AllPlayerDeterminiser.class);
 
     public AllPlayerDeterminiser(AllPlayerDeterminiser apd) {
         root = apd.root;
         determinisationsByPlayer = new GameState[apd.determinisationsByPlayer.length];
         for (int i = 0; i < determinisationsByPlayer.length; i++) {
             determinisationsByPlayer[i] = apd.determinisationsByPlayer[i].getCopy();
+            parentNode = apd.parentNode;
         }
     }
 
@@ -37,53 +37,48 @@ public class AllPlayerDeterminiser {
         // we then do our one-off determinisation of the root player's cards
         // this is because these cards are the ones visible to the other players, so will be constant for the
         // remaining determinisations
-        GameState state = stateToCopy.getCopy();
-        for (int i = 0; i < state.getHandSize(); i++)
-            if (state.getHand(root).getCard(i) != null) {
-                state.getDeck().add(state.getCardAt(root, i));
-            }
-        bindNewCards(root, state);
-        state.getDeck().shuffle();
-        logHand(state, root);
-
-        determinisationsByPlayer[root] = state;
+        determinisationsByPlayer[root] = determiniseHand(root, stateToCopy);
+        logHand(determinisationsByPlayer[root], root);
 
         // and then determinise for each of the other players
         for (int i = 0; i < stateToCopy.getPlayerCount(); i++) {
             if (i == root) continue;
-            state = determinisationsByPlayer[root].getCopy();
-            Hand myHand = state.getHand(i);
-            Deck deck = state.getDeck();
-
-            // put current hand back into deck
-            // and then bind new values
-            for (int slot = 0; slot < myHand.getSize(); slot++) {
-                Card card = myHand.getCard(slot);
-                if (card != null) deck.add(card);
-            }
-
-            // we then bind new cards
-            bindNewCards(i, state);
-            deck.shuffle();
-
-            int totalCards = state.getScore() + deck.getCardsLeft() + state.getDiscards().size();
-            for (int i1 = 0; i1 < state.getPlayerCount(); i1++) {
-                for (int j = 0; j < state.getHandSize(); j++)
-                    if (state.getCardAt(i, j) != null) totalCards++;
-            }
-            if (totalCards != 50) {
-                throw new AssertionError("Should have exactly 50 cards at all times");
-            }
-
-            determinisationsByPlayer[i] = state;
-            logHand(state, i);
+            determinisationsByPlayer[i] = determiniseHand(i, determinisationsByPlayer[root]);
+            logHand(determinisationsByPlayer[i], i);
         }
+    }
+
+    private GameState determiniseHand(int player, GameState base) {
+        GameState state = base.getCopy();
+        Hand myHand = state.getHand(player);
+        Deck deck = state.getDeck();
+
+        // put current hand back into deck
+        // and then bind new values
+        for (int slot = 0; slot < myHand.getSize(); slot++) {
+            Card card = myHand.getCard(slot);
+            if (card != null) deck.add(card);
+        }
+
+        // we then bind new cards
+        bindNewCards(player, state);
+        deck.shuffle();
+
+        int totalCards = state.getScore() + deck.getCardsLeft() + state.getDiscards().size();
+        for (int i = 0; i < state.getPlayerCount(); i++) {
+            for (int j = 0; j < state.getHandSize(); j++)
+                if (state.getCardAt(player, j) != null) totalCards++;
+        }
+        if (totalCards != 50) {
+            throw new AssertionError("Should have exactly 50 cards at all times");
+        }
+        return state;
     }
 
     private void logHand(GameState state, int player) {
         if (logger.isDebugEnabled()) {
             String handString = IntStream.range(0, state.getHandSize())
-                    .mapToObj(state.getHand(root)::getCard)
+                    .mapToObj(state.getHand(player)::getCard)
                     .map(Object::toString)
                     .collect(Collectors.joining(", "));
             logger.debug(String.format("Player %d determinised to %s", player, handString));
@@ -138,36 +133,148 @@ public class AllPlayerDeterminiser {
         }
     }
 
-    public AllPlayerDeterminiser copyApplyCompatibilise(MCTSNode node) {
-
-        AllPlayerDeterminiser retValue = new AllPlayerDeterminiser(this);
+    public List<Integer> applyAndCompatibilise(MCTSNode node) {
         Action action = node.getAction();
+        GameState masterDeterminisation = getDeterminisationFor(root).getCopy();
+        List<Integer> redeterminisationsNeeded = new ArrayList();
+        List<Integer> inconsistentDeterminisations = new ArrayList();
         for (int i = 0; i < determinisationsByPlayer.length; i++) {
-            if (isCompatible(action, determinisationsByPlayer[i])) {
-                GameState state = retValue.getDeterminisationFor(i);
-                state.tick();
-                List<GameEvent> events = action.apply(node.getAgentId(), state);
-                events.forEach(state::addEvent);
+            if (isCompatible(action, node.getAgentId(),
+                    determinisationsByPlayer[i],        // determinisation we are checking
+                    masterDeterminisation)) {           // reference determinisation
+                                                        // copied before we start updating state
+                // we then apply the action to state
+                try {
+                    determinisationsByPlayer[i].tick();
+                    List<GameEvent> events = action.apply(node.getAgentId(), determinisationsByPlayer[i]);
+                    events.forEach(determinisationsByPlayer[i]::addEvent);
+                } catch (RulesViolation rv) {
+                    throw rv;
+                }
             } else {
-                // We need to redeterminise to a valid game state given the history
-                // For each iteration, we always have a fixed set of cards for the root player (as these are unknown
-                // to everybody). Hence all we need to do is put hand into the deck, bind new valid cards to hand, and
-                // shuffle the deck
-                // TODO:
+                if (i == root)
+                    throw new AssertionError("Should not be possible for the master perspective to be incompatible.");
+                redeterminisationsNeeded.add(i);
+                if (!isConsistent(action, node.getAgentId(),
+                        determinisationsByPlayer[i],
+                        masterDeterminisation)) {
+                    inconsistentDeterminisations.add(i);
+                    if (i != node.getAgentId())
+                        throw new AssertionError("Only the active determinisation should ever be inconsistent in Hanabi");
+                }
             }
         }
-        // we then apply the action to state, and re-determinise the hand for the next agent
+        for (int i : redeterminisationsNeeded) {
+            // We need to redeterminise to a valid game state given the history
+            // For each iteration, we always have a fixed set of cards for the root player (as these are unknown
+            // to everybody). Hence we take the determinisation that suggested the action as a base (with the correct
+            // card either played or discarded), put the ith player's hand into the deck and re-bind.
+            determinisationsByPlayer[i] = determiniseHand(i, determinisationsByPlayer[root]);
+            logHand(determinisationsByPlayer[i], i);
+        }
+
+        for (int i = 0; i < determinisationsByPlayer.length; i++) {
+            if (determinisationsByPlayer[i].getHistory().size() != determinisationsByPlayer[root].getHistory().size())
+                throw new AssertionError("All determinisations should have the same history");
+        }
 
         if (logger.isDebugEnabled())
             logger.debug("CRIS-MCTS: Selected action " + action + " for player " + node.getAgentId());
 
         if (node.getReferenceState() == null)
-            node.setReferenceState(retValue.getDeterminisationFor(node.getAgentId()).getCopy());
+            node.setReferenceState(determinisationsByPlayer[root].getCopy());
 
-        return retValue;
+        return inconsistentDeterminisations;
+    }
+
+    public static boolean isCompatible(Action action, int player, GameState state, GameState reference) {
+        /*
+        An action is compatible from a given full game state if:
+            - Play, Discard: the card in that slot must be the same as in the reference state
+                (the reference state is the determinisation for the acting player at this node,
+                not necessarily the root player)
+            - Tell does indeed have some of the mentioned card types
+         */
+
+        if (action instanceof PlayCard) {
+            PlayCard playCard = (PlayCard) action;
+            Card played = state.getCardAt(player, playCard.slot);
+            return (played.equals(reference.getCardAt(player, playCard.slot)));
+        }
+        if (action instanceof DiscardCard) {
+            DiscardCard discardCard = (DiscardCard) action;
+            Card discarded = state.getCardAt(player, discardCard.slot);
+            return (discarded.equals(reference.getCardAt(player, discardCard.slot)));
+        }
+        if (action instanceof TellValue) {
+            TellValue tellValue = (TellValue) action;
+            int v = tellValue.value;
+            for (int i = 0; i < state.getHandSize(); i++) {
+                if (state.getCardAt(tellValue.player, i).value == v) return true;
+            }
+            return false;
+        }
+        if (action instanceof TellColour) {
+            TellColour tellColour = (TellColour) action;
+            CardColour c = tellColour.colour;
+            for (int i = 0; i < state.getHandSize(); i++) {
+                if (state.getCardAt(tellColour.player, i).colour == c) return true;
+            }
+            return false;
+        }
+        throw new AssertionError("Unknown Action type " + action.toString() + " in compatibility check");
+    }
+
+    public static boolean isConsistent(Action action, int player, GameState state, GameState reference) {
+
+        if (action instanceof PlayCard) {
+            PlayCard playCard = (PlayCard) action;
+            Card played = state.getCardAt(player, playCard.slot);
+            return (played.equals(reference.getCardAt(player, playCard.slot)));
+        }
+        if (action instanceof DiscardCard) {
+            DiscardCard discardCard = (DiscardCard) action;
+            Card discarded = state.getCardAt(player, discardCard.slot);
+            return (discarded.equals(reference.getCardAt(player, discardCard.slot)));
+        }
+        if (action instanceof TellValue) {
+            // We are inconsistent only if none of our cards can possible have this value
+            // which technically should never happen
+            TellValue tellValue = (TellValue) action;
+            for (int i = 0; i < state.getHandSize(); i++) {
+                for (int v : state.getHand(tellValue.player).getPossibleValues(i)) {
+                    if (v == tellValue.value) return false;
+                }
+            }
+            throw new AssertionError("Completely inconsistent Tell has occurred " + tellValue.toString());
+        }
+        if (action instanceof TellColour) {
+            TellColour tellColour = (TellColour) action;
+            for (int i = 0; i < state.getHandSize(); i++) {
+                for (CardColour c : state.getHand(tellColour.player).getPossibleColours(i)) {
+                    if (c == tellColour.colour) return false;
+                }
+            }
+            throw new AssertionError("Completely inconsistent Tell has occurred " + tellColour.toString());
+        }
+        throw new AssertionError("Unknown Action type " + action.toString() + " in compatibility check");
     }
 
     public GameState getDeterminisationFor(int playerID) {
         return determinisationsByPlayer[playerID];
+    }
+    public GameState getMasterDeterminisation() {
+        return determinisationsByPlayer[root];
+    }
+
+    public MCTSNode getParentNode() {
+        return parentNode;
+    }
+    public void setParentNode(MCTSNode node) {
+        parentNode = node;
+    }
+
+    public String toString() {
+        return String.format("Root %d from node %s", root, parentNode);
     }
 }

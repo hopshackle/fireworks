@@ -50,7 +50,7 @@ public class MCTSRuleNode extends MCTSNode {
         double bestScore = -Double.MAX_VALUE;
         MCTSNode bestChild = null;
 
-        int agentToAct = (getAgent() + 1) % state.getPlayerCount();
+        int agentToAct = (getAgentId() + 1) % state.getPlayerCount();
         List<Action> legalMoves = getAllLegalMoves(state, agentToAct);
         for (Action legalAction : legalMoves) incrementParentVisit(legalAction);
 

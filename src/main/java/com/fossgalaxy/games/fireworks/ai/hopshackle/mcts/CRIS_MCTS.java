@@ -30,14 +30,6 @@ public class CRIS_MCTS extends MCTS {
             rollouts++;
             GameState currentState = state.getCopy();
             AllPlayerDeterminiser apd = new AllPlayerDeterminiser(state, agentID);
-            if (logger.isDebugEnabled()) {
-                String logMessage = "All legal moves from root: " +
-                        ((MCTSRuleNode) root).getAllLegalMoves(apd.getDeterminisationFor(agentID), (agentID + 1) % state.getPlayerCount())
-                                .stream()
-                                .map(Action::toString)
-                                .collect(Collectors.joining("\t"));
-                logger.debug(logMessage);
-            }
             executeBranchingSearch(agentID, apd, root, currentState, movesLeft);
 
             if (calcTree) {
@@ -54,58 +46,63 @@ public class CRIS_MCTS extends MCTS {
         So this incorporates select() and rollout() and backup()
          */
         int treeDepth = calculateTreeDepthLimit(state);
-        MCTSNode[] next = new MCTSNode[state.getPlayerCount()];
-        boolean[] expanded = new boolean[state.getPlayerCount()];
-        for (int i = 0; i < state.getPlayerCount(); i++) {
-            GameState determinisation = apd.getDeterminisationFor(i);
-            nodeExpanded = false;
-            if (!state.isGameOver() && root.getDepth() < treeDepth && movesLeft > 0) {
-                next[i] = oneStepSelect(root, determinisation, movesLeft, apd);
-                if (next[i] != null & next[i].getAgent() != agentID) {
-                    throw new AssertionError("WTF");
-                }
-                if (nodeExpanded) {
-                    expanded[i] = true;
-                    nodesExpanded++;
-                    if (next[i].getDepth() > deepestNode) deepestNode = next[i].getDepth();
-                    allNodeDepths += next[i].getDepth();
-                }
+        //      MCTSNode[] next = new MCTSNode[state.getPlayerCount()];
+        //     boolean[] expanded = new boolean[state.getPlayerCount()];
+        MCTSNode next = null;
+        if (root.getDepth() < treeDepth) {
+            next = oneStepSelect(root, apd.getDeterminisationFor(agentID));
+            if (next != null && next.getAgentId() != agentID) {
+                throw new AssertionError("WTF");
+            }
+            if (logger.isDebugEnabled())
+                logger.debug(String.format("Determinisation %d for player %d makes decision %s",
+                        agentID, agentID, next.getAction().toString()));
+            if (nodeExpanded) {
+                nodesExpanded++;
+                if (next.getDepth() > deepestNode) deepestNode = next.getDepth();
+                allNodeDepths += next.getDepth();
             }
         }
 
         /*
-        Now we have a node for each determinisation. If any of them are null, or just expanded, then we can
+        If the new node is null, or just expanded, then we can
         immediately rollout() and backup(). Rollout() only uses the determinisation responsible for the decision.
         So we do not need to compatibilise.
-        For all others, we recursively call executeBranchingSearch after we have renewed determinisations to
+        In all other cases, we recursively call executeBranchingSearch after we have renewed determinisations to
         be compatible with the actual move made
         */
-        for (int i = 0; i < state.getPlayerCount(); i++) {
-            if (next[i] == null) {
-                double score = rollout(apd.getDeterminisationFor(i), root, movesLeft);
-                root.backup(score);
-                if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
-            } else if (expanded[i]) {
-                double score = rollout(apd.getDeterminisationFor(i), next[i], movesLeft - 1);
-                next[i].backup(score);
-                if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
-            } else {
-                boolean oldAction = false;
-                for (int j = 0; j < i; j++)
-                    if (next[i] == next[j]) oldAction = true;
-                if (!oldAction) {
-                    // We only explore each node taken once
-                    int agentAboutToAct = (next[i].getAgent() + 1) % state.getPlayerCount();
 
-                    AllPlayerDeterminiser newApd = apd.copyApplyCompatibilise(next[i]);
-                    executeBranchingSearch(agentAboutToAct, newApd, next[i], newApd.getDeterminisationFor(i), movesLeft - 1);
-                }
+        if (next == null) {
+            double score = rollout(apd.getMasterDeterminisation().getCopy(), root, movesLeft);
+            if (logger.isDebugEnabled())
+                logger.debug(String.format("Rollout at tree limit give score of %.2f", score));
+            root.backup(score, apd);
+            if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
+        } else if (nodeExpanded) {
+            double score = rollout(apd.getMasterDeterminisation().getCopy(), next, movesLeft - 1);
+            next.backup(score, apd);
+            if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
+        } else {
+            AllPlayerDeterminiser referenceAPD = new AllPlayerDeterminiser(apd);
+
+            int agentAboutToAct = (next.getAgentId() + 1) % state.getPlayerCount();
+
+            List<Integer> branchesNeeded = apd.applyAndCompatibilise(next);
+            executeBranchingSearch(agentAboutToAct, apd, next, apd.getMasterDeterminisation(), movesLeft - 1);
+
+            for (int i : branchesNeeded) {
+                // we need to branch
+                AllPlayerDeterminiser newApd = new AllPlayerDeterminiser(referenceAPD.getDeterminisationFor(i), i);
+                newApd.setParentNode(root);
+                newApd.applyAndCompatibilise(next);
+                if (logger.isDebugEnabled())
+                    logger.debug(String.format("Launching search for %s", newApd));
+                executeBranchingSearch(agentAboutToAct, newApd, next, newApd.getDeterminisationFor(i), movesLeft - 1);
             }
         }
     }
 
-
-    protected MCTSNode oneStepSelect(MCTSNode current, GameState state, int movesLeft, AllPlayerDeterminiser apd) {
+    protected MCTSNode oneStepSelect(MCTSNode current, GameState state) {
         MCTSNode next;
         if (current.fullyExpanded(state)) {
             next = current.getUCTNode(state);

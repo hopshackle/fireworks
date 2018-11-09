@@ -34,7 +34,7 @@ public class RuleFullExpansion extends RuleExpansionPolicy {
         // which is a bit of a hack...but...
         // we then assume that the best move is worth a point, and pro rata the rest
 
-        int nextAgentID = (parent.getAgent() + 1) % state.getPlayerCount();
+        int nextAgentID = (parent.getAgentId() + 1) % state.getPlayerCount();
         Map<Action, Double> actionValues = new HashMap<>();
         if (QAgent.isPresent()) {
             actionValues = QAgent.get().getAllActionValues(nextAgentID, state);

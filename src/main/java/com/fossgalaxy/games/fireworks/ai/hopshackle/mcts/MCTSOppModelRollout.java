@@ -125,7 +125,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
 
             double score = rollout(currentState, current, movesLeft - current.getDepth());
             if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
-            current.backup(score);
+            current.backup(score, null);
             if (calcTree) {
                 System.out.println(root.printD3());
             }
