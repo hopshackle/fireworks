@@ -3,8 +3,9 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSNode;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.ExpansionPolicy;
 import com.fossgalaxy.games.fireworks.ai.iggi.Utils;
+import com.fossgalaxy.games.fireworks.state.CardColour;
 import com.fossgalaxy.games.fireworks.state.GameState;
-import com.fossgalaxy.games.fireworks.state.actions.Action;
+import com.fossgalaxy.games.fireworks.state.actions.*;
 import org.slf4j.Logger;
 
 import java.util.*;
@@ -23,7 +24,9 @@ public class SimpleNodeExpansion implements ExpansionPolicy {
     @Override
     public MCTSNode createNode(MCTSNode parent, int previousAgentID, Action moveTo, double C, int priorVisits, double priorMeanValue) {
         GameState state = parent.getReferenceState();
-        Collection<Action> allActions = Utils.generateAllActions((previousAgentID + 1) % state.getPlayerCount(), state.getPlayerCount());
+        Collection<Action> allActions = generateAllActions((previousAgentID + 1) % state.getPlayerCount(),
+                state.getPlayerCount(),
+                state.getInfomation());
         MCTSNode root = new MCTSNode(
                 parent,
                 previousAgentID,
@@ -34,7 +37,8 @@ public class SimpleNodeExpansion implements ExpansionPolicy {
 
     @Override
     public MCTSNode createRoot(GameState refState, int previousAgentID, double C) {
-        Collection<Action> allActions = Utils.generateAllActions((previousAgentID + 1) % refState.getPlayerCount(), refState.getPlayerCount());
+        Collection<Action> allActions = generateAllActions((previousAgentID + 1) % refState.getPlayerCount(),
+                refState.getPlayerCount(), refState.getInfomation());
         MCTSNode root = new MCTSNode(
                 null,
                 previousAgentID,
@@ -63,7 +67,7 @@ public class SimpleNodeExpansion implements ExpansionPolicy {
 
     @Override
     public MCTSNode expand(MCTSNode parent, GameState state) {
-        int nextAgentID = (parent.getAgent() + 1) % state.getPlayerCount();
+        int nextAgentID = (parent.getAgentId() + 1) % state.getPlayerCount();
         Action action = selectActionForExpand(state, parent, nextAgentID);
         // It is possible it wasn't allowed
         if (action == null) {
@@ -77,6 +81,37 @@ public class SimpleNodeExpansion implements ExpansionPolicy {
         MCTSNode child = createNode(parent, nextAgentID, action, parent.expConst);
         parent.addChild(child);
         return child;
+    }
+
+    private static final int[] HAND_SIZE = new int[]{-1, -1, 5, 5, 4, 4};
+
+
+    public static Collection<Action> generateAllActions(int playerID, int numPlayers, int information) {
+        HashSet<Action> list = new HashSet();
+
+        int player;
+        for (player = 0; player < HAND_SIZE[numPlayers]; ++player) {
+            if (information < 8) list.add(new DiscardCard(player));
+            list.add(new PlayCard(player));
+        }
+
+        for (player = 0; player < numPlayers; ++player) {
+            if (player != playerID) {
+                CardColour[] var4 = CardColour.values();
+                int var5 = var4.length;
+
+                for (int var6 = 0; var6 < var5; ++var6) {
+                    CardColour colour = var4[var6];
+                    list.add(new TellColour(player, colour));
+                }
+
+                for (int i = 1; i <= 5; ++i) {
+                    list.add(new TellValue(player, i));
+                }
+            }
+        }
+
+        return list;
     }
 
 }
