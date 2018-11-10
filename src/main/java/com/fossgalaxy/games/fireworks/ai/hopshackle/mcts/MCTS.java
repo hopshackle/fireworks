@@ -183,6 +183,8 @@ public class MCTS implements Agent, HasGameOverProcessing {
     }
 
     protected MCTSNode expand(MCTSNode parent, GameState state) {
+        // we also need to increment the parent eligible visit count at this point
+        parent.incrementParentVisitsForAllEligibleActions(state);
         return expansionPolicy.expand(parent, state);
     }
 

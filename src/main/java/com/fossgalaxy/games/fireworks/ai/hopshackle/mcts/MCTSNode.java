@@ -109,7 +109,7 @@ public class MCTSNode {
         return children;
     }
 
-    public void backup(double score, AllPlayerDeterminiser apd) {
+    public void backup(double score, MCTSNode stopNode) {
         MCTSNode current = this;
         int iterations = 0;
         MCTSNode last = null;
@@ -122,7 +122,7 @@ public class MCTSNode {
             iterations++;
             current.visits++;
             last = current;
-            if (apd != null && apd.getParentNode() == current) {
+            if (stopNode != null && stopNode == current) {
                 current = null;
                 // stop back-propagation
             } else {
@@ -143,18 +143,9 @@ public class MCTSNode {
         for (MCTSNode child : children) {
             //XXX Hack to check if the move is legal in this version
             Action moveToMake = child.moveToState;
-            if (moveToMake instanceof DiscardCard) {
-                DiscardCard dc = (DiscardCard) moveToMake;
-                if (state.getInfomation() == state.getStartingInfomation() || !state.getHand(child.agentId).hasCard(dc.slot))
-                    continue;
-            } else if (moveToMake instanceof PlayCard) {
-                PlayCard pc = (PlayCard) moveToMake;
-                if (!state.getHand(child.agentId).hasCard(pc.slot))
-                    continue;
-            } else if (!moveToMake.isLegal(child.agentId, state)) {
+            if (!legalAction(moveToMake, child.agentId, state))
                 continue;
-            }
-            incrementParentVisit(moveToMake);
+
             double childScore = child.getUCTValue() + (random.nextDouble() * EPSILON);
             if (logger.isDebugEnabled())
                 logger.debug(String.format("\tUCT: %.2f from base %.2f (%d/%d complete/eligible visits) for %s", childScore, child.score / child.visits,
@@ -165,17 +156,38 @@ public class MCTSNode {
                 bestChild = child;
             }
         }
-
-        for (Action unexpandedAction : getLegalUnexpandedMoves(state, (getAgentId() + 1) % state.getPlayerCount())) {
-            incrementParentVisit(unexpandedAction);
-            // we still need to increment the count for this, even though it is not yet expanded
-        }
+        incrementParentVisitsForAllEligibleActions(state);
 
         if (logger.isDebugEnabled()) logger.debug(String.format("\tChosen Action is %s", bestChild.moveToState));
         return bestChild;
     }
 
-    protected void incrementParentVisit(Action a) {
+    private boolean legalAction(Action action, int player, GameState state) {
+        if (action instanceof DiscardCard) {
+            DiscardCard dc = (DiscardCard) action;
+            if (state.getInfomation() == state.getStartingInfomation() || !state.getHand(player).hasCard(dc.slot))
+                return false;
+        } else if (action instanceof PlayCard) {
+            PlayCard pc = (PlayCard) action;
+            if (!state.getHand(player).hasCard(pc.slot))
+                return false;
+        } else if (!action.isLegal(player, state)) {
+            return false;
+        }
+        return true;
+    }
+    protected void incrementParentVisitsForAllEligibleActions(GameState state) {
+        for (MCTSNode child : children) {
+            if (!legalAction(child.moveToState, child.agentId, state))
+                continue;
+            incrementParentVisit(child.moveToState);
+        }
+        for (Action unexpandedAction : getLegalUnexpandedMoves(state, (getAgentId() + 1) % state.getPlayerCount())) {
+            incrementParentVisit(unexpandedAction);
+            // we still need to increment the count for this, even though it is not yet expanded
+        }
+    }
+    private void incrementParentVisit(Action a) {
         if (!parentWasVisitedAndIWasLegal.containsKey(a)) {
             parentWasVisitedAndIWasLegal.put(a, 1);
         } else {

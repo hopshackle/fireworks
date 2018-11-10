@@ -133,42 +133,43 @@ public class AllPlayerDeterminiser {
         }
     }
 
-    public List<Integer> applyAndCompatibilise(MCTSNode node) {
+    /*
+    This method should redeterminise the game for the specified playerID, while keeping within their current
+    Information Set, so that the determinisation remains consistent with all previous events
+     */
+    public void redeterminiseWithinIS(int playerID) {
+        determinisationsByPlayer[playerID] = determiniseHand(playerID, determinisationsByPlayer[root]);
+        if (playerID == root) {
+            // this also means that all other players will likely have inconsistent determinisations
+            throw new AssertionError("Not yet implemented for the root of an APD");
+        }
+    }
+
+    public void applyAndCompatibilise(MCTSNode node, boolean makeConsistent) {
         Action action = node.getAction();
         GameState masterDeterminisation = getDeterminisationFor(root).getCopy();
-        List<Integer> redeterminisationsNeeded = new ArrayList();
-        List<Integer> inconsistentDeterminisations = new ArrayList();
-        for (int i = 0; i < determinisationsByPlayer.length; i++) {
-            if (isCompatible(action, node.getAgentId(),
-                    determinisationsByPlayer[i],        // determinisation we are checking
-                    masterDeterminisation)) {           // reference determinisation
-                                                        // copied before we start updating state
-                // we then apply the action to state
-                try {
-                    determinisationsByPlayer[i].tick();
-                    List<GameEvent> events = action.apply(node.getAgentId(), determinisationsByPlayer[i]);
-                    events.forEach(determinisationsByPlayer[i]::addEvent);
-                } catch (RulesViolation rv) {
-                    throw rv;
-                }
-            } else {
-                if (i == root)
-                    throw new AssertionError("Should not be possible for the master perspective to be incompatible.");
-                redeterminisationsNeeded.add(i);
-                if (!isConsistent(action, node.getAgentId(),
-                        determinisationsByPlayer[i],
-                        masterDeterminisation)) {
-                    inconsistentDeterminisations.add(i);
-                    if (i != node.getAgentId())
-                        throw new AssertionError("Only the active determinisation should ever be inconsistent in Hanabi");
-                }
-            }
+        // firstly we apply the action to the master determinisation
+        try {
+            determinisationsByPlayer[root].tick();
+            List<GameEvent> events = action.apply(node.getAgentId(), determinisationsByPlayer[root]);
+            events.forEach(determinisationsByPlayer[root]::addEvent);
+        } catch (RulesViolation rv) {
+            throw rv;
         }
-        for (int i : redeterminisationsNeeded) {
+        // then for each other determinisation we check if it is consistent
+        for (int i = 0; i < masterDeterminisation.getPlayerCount(); i++) {
+            if (i == root) continue;
+            if (!isConsistent(action, node.getAgentId(),
+                    determinisationsByPlayer[i],
+                    masterDeterminisation)) {
+                if (!makeConsistent)
+                    throw new AssertionError("We have an inconsistent determinisation where we are not expecting one");
+            }
             // We need to redeterminise to a valid game state given the history
             // For each iteration, we always have a fixed set of cards for the root player (as these are unknown
-            // to everybody). Hence we take the determinisation that suggested the action as a base (with the correct
+            // to everybody). Hence we take that as a base (with the correct
             // card either played or discarded), put the ith player's hand into the deck and re-bind.
+            // We could check for full compatibility and apply the action individually...but this is less error prone
             determinisationsByPlayer[i] = determiniseHand(i, determinisationsByPlayer[root]);
             logHand(determinisationsByPlayer[i], i);
         }
@@ -184,7 +185,6 @@ public class AllPlayerDeterminiser {
         if (node.getReferenceState() == null)
             node.setReferenceState(determinisationsByPlayer[root].getCopy());
 
-        return inconsistentDeterminisations;
     }
 
     public static boolean isCompatible(Action action, int player, GameState state, GameState reference) {
@@ -243,7 +243,7 @@ public class AllPlayerDeterminiser {
             TellValue tellValue = (TellValue) action;
             for (int i = 0; i < state.getHandSize(); i++) {
                 for (int v : state.getHand(tellValue.player).getPossibleValues(i)) {
-                    if (v == tellValue.value) return false;
+                    if (v == tellValue.value) return true;
                 }
             }
             throw new AssertionError("Completely inconsistent Tell has occurred " + tellValue.toString());
@@ -252,7 +252,7 @@ public class AllPlayerDeterminiser {
             TellColour tellColour = (TellColour) action;
             for (int i = 0; i < state.getHandSize(); i++) {
                 for (CardColour c : state.getHand(tellColour.player).getPossibleColours(i)) {
-                    if (c == tellColour.colour) return false;
+                    if (c == tellColour.colour) return true;
                 }
             }
             throw new AssertionError("Completely inconsistent Tell has occurred " + tellColour.toString());
@@ -263,13 +263,19 @@ public class AllPlayerDeterminiser {
     public GameState getDeterminisationFor(int playerID) {
         return determinisationsByPlayer[playerID];
     }
+
     public GameState getMasterDeterminisation() {
         return determinisationsByPlayer[root];
+    }
+
+    public int getRootPlayer() {
+        return root;
     }
 
     public MCTSNode getParentNode() {
         return parentNode;
     }
+
     public void setParentNode(MCTSNode node) {
         parentNode = node;
     }

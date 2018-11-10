@@ -52,7 +52,6 @@ public class MCTSRuleNode extends MCTSNode {
 
         int agentToAct = (getAgentId() + 1) % state.getPlayerCount();
         List<Action> legalMoves = getAllLegalMoves(state, agentToAct);
-        for (Action legalAction : legalMoves) incrementParentVisit(legalAction);
 
         List<MCTSNode> validChildren = children.stream()
                 .filter(c -> legalMoves.contains(c.moveToState))
