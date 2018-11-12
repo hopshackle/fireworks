@@ -59,13 +59,15 @@ public class MCTSRuleNode extends MCTSNode {
 
         for (MCTSNode child : validChildren) {
             double childScore = child.getUCTValue() + (random.nextDouble() * EPSILON);
-            if (logger.isDebugEnabled()) logger.debug(String.format("\tUCT: %.2f from base %.2f for %s", childScore, child.score / child.visits, child.moveToState));
+            if (logger.isDebugEnabled()) logger.debug(String.format("\tUCT: %.2f from base %.2f (%d/%d complete/eligible visits) for %s", childScore,
+                    child.score / child.visits, child.getVisits(), parentWasVisitedAndIWasLegal.get(child.moveToState), child.moveToState));
 
             if (childScore > bestScore) {
                 bestScore = childScore;
                 bestChild = child;
             }
         }
+        incrementParentVisitsForAllEligibleActions(state);
 
         if (logger.isDebugEnabled()) logger.debug(String.format("\tChosen Action is %s", bestChild == null ? "NULL" : bestChild.moveToState));
         return bestChild;

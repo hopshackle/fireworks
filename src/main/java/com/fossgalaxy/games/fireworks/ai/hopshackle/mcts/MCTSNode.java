@@ -66,6 +66,7 @@ public class MCTSNode {
     public MCTSNode(MCTSNode parent, int agentId, Action moveToState, Collection<Action> allUnexpandedActions) {
         this(parent, agentId, moveToState, DEFAULT_EXP_CONST, allUnexpandedActions);
     }
+
     public MCTSNode(MCTSNode parent, int agentId, Action moveToState, double expConst, Collection<Action> allUnexpandedActions) {
         this(parent, agentId, moveToState, DEFAULT_EXP_CONST, allUnexpandedActions, 0, 0);
     }
@@ -114,18 +115,18 @@ public class MCTSNode {
         int iterations = 0;
         MCTSNode last = null;
         while (current != null) {
-            if (DISCOUNT_ENABLED) {
-                current.score += score * Math.pow(0.95, current.getDepth() - 1.0);
-            } else {
-                current.score += score;
-            }
-            iterations++;
-            current.visits++;
-            last = current;
             if (stopNode != null && stopNode == current) {
                 current = null;
                 // stop back-propagation
             } else {
+                if (DISCOUNT_ENABLED) {
+                    current.score += score * Math.pow(0.95, current.getDepth() - 1.0);
+                } else {
+                    current.score += score;
+                }
+                iterations++;
+                current.visits++;
+                last = current;
                 current = current.parent;
             }
         }
@@ -176,6 +177,7 @@ public class MCTSNode {
         }
         return true;
     }
+
     protected void incrementParentVisitsForAllEligibleActions(GameState state) {
         for (MCTSNode child : children) {
             if (!legalAction(child.moveToState, child.agentId, state))
@@ -187,6 +189,7 @@ public class MCTSNode {
             // we still need to increment the count for this, even though it is not yet expanded
         }
     }
+
     private void incrementParentVisit(Action a) {
         if (!parentWasVisitedAndIWasLegal.containsKey(a)) {
             parentWasVisitedAndIWasLegal.put(a, 1);
@@ -343,7 +346,15 @@ public class MCTSNode {
         referenceState = refState;
     }
 
-    public int getVisits() {return visits;}
-    public double getMeanScore() {return score / visits;}
-    public int getAgentId() {return agentId;}
+    public int getVisits() {
+        return visits;
+    }
+
+    public double getMeanScore() {
+        return score / visits;
+    }
+
+    public int getAgentId() {
+        return agentId;
+    }
 }

@@ -24,7 +24,8 @@ public class PlayProbablySafeLateGameCard extends AbstractRule {
     }
 
     public PlayProbablySafeLateGameCard(double threshold, int deck) {
-        this.pThreshold = threshold;this.deckThreshold = deck;
+        this.pThreshold = threshold;
+        this.deckThreshold = deck;
     }
 
     @Override

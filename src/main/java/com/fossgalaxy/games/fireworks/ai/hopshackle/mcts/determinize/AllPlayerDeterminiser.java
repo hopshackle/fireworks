@@ -67,7 +67,7 @@ public class AllPlayerDeterminiser {
         int totalCards = state.getScore() + deck.getCardsLeft() + state.getDiscards().size();
         for (int i = 0; i < state.getPlayerCount(); i++) {
             for (int j = 0; j < state.getHandSize(); j++)
-                if (state.getCardAt(player, j) != null) totalCards++;
+                if (state.getHand(i).hasCard(j)) totalCards++;
         }
         if (totalCards != 50) {
             throw new AssertionError("Should have exactly 50 cards at all times");
@@ -79,11 +79,11 @@ public class AllPlayerDeterminiser {
         if (logger.isDebugEnabled()) {
             String handString = IntStream.range(0, state.getHandSize())
                     .mapToObj(state.getHand(player)::getCard)
+                    .filter(Objects::nonNull)
                     .map(Object::toString)
                     .collect(Collectors.joining(", "));
             logger.debug(String.format("Player %d determinised to %s", player, handString));
         }
-
     }
 
     /*
