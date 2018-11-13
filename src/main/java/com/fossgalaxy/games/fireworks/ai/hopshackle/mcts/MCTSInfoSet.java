@@ -1,5 +1,6 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
+import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.HandDeterminiser;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGatherer;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGathererFullTree;
@@ -21,7 +22,6 @@ import java.util.stream.Collectors;
 public class MCTSInfoSet extends MCTS {
 
     protected HandDeterminiser handDeterminiser;
-    protected int rollouts;
 
     /**
      * Create a default MCTS implementation.
@@ -49,6 +49,12 @@ public class MCTSInfoSet extends MCTS {
     public MCTSInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
+    }
+
+    @AgentConstructor("hs-mctsMRPolicy")
+    public MCTSInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
+        this.rolloutPolicy = rollout;
     }
 
     @Override
@@ -167,7 +173,7 @@ public class MCTSInfoSet extends MCTS {
 
     @Override
     public String toString() {
-        return "MCTSInfoSet";
+        return String.format("MCTSInfoSet(%s)", rolloutPolicy == null ? "NONE" : rolloutPolicy.toString());
     }
 
 

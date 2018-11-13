@@ -1,20 +1,13 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
-import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.ExpansionPolicy;
-import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.SimpleNodeExpansion;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.*;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.*;
 import com.fossgalaxy.games.fireworks.ai.iggi.Utils;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
-import com.fossgalaxy.games.fireworks.annotations.AgentBuilderStatic;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
-import com.fossgalaxy.games.fireworks.state.Card;
-import com.fossgalaxy.games.fireworks.state.Deck;
-import com.fossgalaxy.games.fireworks.state.GameState;
-import com.fossgalaxy.games.fireworks.state.Hand;
-import com.fossgalaxy.games.fireworks.state.actions.Action;
-import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
-import com.fossgalaxy.games.fireworks.state.actions.PlayCard;
+import com.fossgalaxy.games.fireworks.state.*;
+import com.fossgalaxy.games.fireworks.state.actions.*;
 import com.fossgalaxy.games.fireworks.state.events.GameEvent;
 import com.fossgalaxy.games.fireworks.utils.DebugUtils;
 import org.slf4j.Logger;
@@ -29,7 +22,6 @@ public class MCTS implements Agent, HasGameOverProcessing {
     public static final int DEFAULT_ROLLOUT_DEPTH = 18;
     public static final int DEFAULT_TREE_DEPTH_MUL = 1;
     public static final int DEFAULT_TIME_LIMIT = 1000;
-    public static final int NO_LIMIT = 100;
 
     //   protected final int roundLength;
     protected final int rolloutDepth;
@@ -47,6 +39,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
     protected double maxTreeDepth, meanTreeDepth, rolloutN;
     protected int deepestNode, allNodeDepths, rollouts;
     protected ExpansionPolicy expansionPolicy;
+    protected Agent rolloutPolicy;
 
     /**
      * Create a default MCTS implementation.
@@ -81,9 +74,10 @@ public class MCTS implements Agent, HasGameOverProcessing {
         expansionPolicy = new SimpleNodeExpansion(logger, random);
     }
 
-    @AgentBuilderStatic("mctsND")
-    public static MCTS buildMCTSND() {
-        return new MCTS(MCTSNode.DEFAULT_EXP_CONST, MCTS.NO_LIMIT, MCTS.NO_LIMIT, DEFAULT_TIME_LIMIT);
+    @AgentConstructor("hs-mctsPolicy")
+    public MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
+        this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
+        rolloutPolicy = rollout;
     }
 
     public void setStateGatherer(StateGatherer sg) {
@@ -261,6 +255,41 @@ public class MCTS implements Agent, HasGameOverProcessing {
 
 
     protected Action selectActionForRollout(GameState state, int playerID) {
+        if (rolloutPolicy == null) {
+            return randomAction(state, playerID);
+        } else {
+            try {
+                // we first need to ensure Player's hand is back in deck
+                Hand myHand = state.getHand(playerID);
+                Deck deck = state.getDeck();
+                int cardsAddedToDeck = 0;
+                for (int i = 0; i < myHand.getSize(); i++) {
+                    if (myHand.getCard(i) != null) {
+                        deck.add(myHand.getCard(i));
+                        cardsAddedToDeck++;
+                    }
+                }
+                // then choose the action
+                Action chosenAction = rolloutPolicy.doMove(playerID, state);
+                // then put their hand back
+                for (int i = 0; i < cardsAddedToDeck; i++) {
+                    deck.getTopCard();
+                }
+
+                return chosenAction;
+            } catch (IllegalArgumentException ex) {
+                logger.error("warning, agent failed to make move: {}", ex);
+                return randomAction(state, playerID);
+            }
+            catch (IllegalStateException ex) {
+                logger.error("Problem with Rules in rollout {} for player {} using policy {}", ex, playerID, rolloutPolicy);
+                DebugUtils.printState(logger, state);
+                return randomAction(state, playerID);
+            }
+        }
+    }
+
+    private Action randomAction(GameState state, int playerID) {
         Collection<Action> legalActions = Utils.generateActions(playerID, state);
 
         List<Action> listAction = new ArrayList<>(legalActions);
@@ -308,7 +337,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
 
     @Override
     public String toString() {
-        return "MCTS";
+        return String.format("MCTS(%s)", rolloutPolicy == null ? "rnd" : rolloutPolicy.toString());
     }
 
     protected void printCard(Map.Entry<Integer, List<Card>> entry) {

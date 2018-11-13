@@ -1,5 +1,6 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
+import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.*;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.*;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
@@ -19,7 +20,16 @@ public class CRIS_MCTS extends MCTS {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
     }
+    @AgentConstructor("CRIS-MCTSPolicy")
+    public CRIS_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
+        this.rolloutPolicy = rollout;
+    }
 
+
+    public CRIS_MCTS() {
+        this(MCTSNode.DEFAULT_EXP_CONST, DEFAULT_ROLLOUT_DEPTH, DEFAULT_TREE_DEPTH_MUL, DEFAULT_TIME_LIMIT);
+    }
 
     @Override
     protected void executeSearch(int agentID, MCTSNode root, GameState state, int movesLeft) {
@@ -168,17 +178,13 @@ public class CRIS_MCTS extends MCTS {
         // now that we finally have an action compatible with our master determinisation, off we go
         // Now we can kick off the APD that bought us here....up to now we have been kicking off APDs to improve
         // the local opponent model
-        apd.applyAndCompatibilise(next, possibleActions == 1);
+        apd.applyAndCompatibilise(next, false);
         // if we only have one possible action, then we override consistency
-        if (nodeExpanded)
-
-        {
+        if (nodeExpanded) {
             double score = rollout(apd.getMasterDeterminisation(), next, movesLeft - 1);
             next.backup(score, apd.getParentNode());
             if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
-        } else
-
-        {
+        } else {
             int agentNextToAct = (next.getAgentId() + 1) % state.getPlayerCount();
             executeBranchingSearch(agentNextToAct, apd, next, movesLeft - 1);
         }
@@ -205,5 +211,9 @@ public class CRIS_MCTS extends MCTS {
             nodeExpanded = true;
         }
         return next;
+    }
+
+    public String toString() {
+        return String.format("CRIS-MCST(%s)", rolloutPolicy == null ? "NONE" : rolloutPolicy.toString());
     }
 }

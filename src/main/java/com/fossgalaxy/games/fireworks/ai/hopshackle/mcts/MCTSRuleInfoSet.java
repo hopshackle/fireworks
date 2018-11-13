@@ -1,5 +1,8 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
+import com.fossgalaxy.games.fireworks.ai.Agent;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.evalfn.EvalFnAgent;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.RuleFullExpansion;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.PlayProbablySafeCard;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.PlayProbablySafeLateGameCard;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.RuleExpansionPolicy;
@@ -85,10 +88,19 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
         expansionPolicy = new RuleExpansionPolicy(logger, random, allRules);
     }
 
+    @AgentConstructor("hs-mctsRuleMRPolicy")
+    public MCTSRuleInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
+        this.rolloutPolicy = rollout;
+        // TODO: Parameterise this more elegantly in future
+        if (rollout instanceof EvalFnAgent)
+            expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.empty(), Optional.of((EvalFnAgent) rollout));
+    }
+
 
     @Override
     public String toString() {
-        return "MCTSRuleInfoSet";
+        return String.format("MCTSRuleInfoSet(%s)", rolloutPolicy == null ? "NONE" : rolloutPolicy.toString());
     }
 
 }
