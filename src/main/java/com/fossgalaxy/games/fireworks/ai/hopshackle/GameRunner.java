@@ -149,7 +149,7 @@ public class GameRunner {
         long endTime = getTick();
         logger.debug("agent {} took {} ms to make their move", nextPlayer, endTime - startTime);
         logger.debug("move {}: player {} made move {}", moves, nextPlayer, action);
-        System.out.println(String.format("move %d: player %d made move %s", moves, nextPlayer, action));
+  //      System.out.println(String.format("move %d: player %d made move %s", moves, nextPlayer, action));
 
         //if the more was illegal, throw a rules violation
         if (!action.isLegal(nextPlayer, state)) {

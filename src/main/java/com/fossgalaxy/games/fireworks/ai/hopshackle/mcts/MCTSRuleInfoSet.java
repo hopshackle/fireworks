@@ -90,7 +90,7 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
 
     @AgentConstructor("hs-mctsRuleMRPolicy")
     public MCTSRuleInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
+        this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         this.rolloutPolicy = rollout;
         // TODO: Parameterise this more elegantly in future
         if (rollout instanceof EvalFnAgent)

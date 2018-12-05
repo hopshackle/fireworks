@@ -24,17 +24,17 @@ public class MCTSRule extends MCTS {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         expansionPolicy = new RuleExpansionPolicy(logger, random, MCTSRuleInfoSet.allRules);
     }
+
     @AgentConstructor("hs-mctsRulePolicy")
     public MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
+        this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         this.rolloutPolicy = rollout;
-        // TODO: Parameterise this more elegantly in future
         if (rollout instanceof EvalFnAgent)
             expansionPolicy = new RuleFullExpansion(logger, random, MCTSRuleInfoSet.allRules, Optional.empty(), Optional.of((EvalFnAgent) rollout));
     }
 
     @Override
     public String toString() {
-        return "MCTSRule";
+        return String.format("MCTSRule(%s)", rolloutPolicy == null ? "NONE" : rolloutPolicy.toString());
     }
 }

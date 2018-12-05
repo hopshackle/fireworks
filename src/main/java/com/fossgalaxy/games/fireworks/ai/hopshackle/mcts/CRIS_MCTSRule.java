@@ -34,7 +34,7 @@ public class CRIS_MCTSRule extends CRIS_MCTS {
 
     @AgentConstructor("CRIS-MCTSRulePolicy")
     public CRIS_MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
+        this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         this.rolloutPolicy = rollout;
         // TODO: Parameterise this more elegantly in future
         if (rollout instanceof EvalFnAgent)
