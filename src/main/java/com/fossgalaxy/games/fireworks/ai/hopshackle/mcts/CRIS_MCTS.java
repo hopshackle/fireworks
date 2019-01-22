@@ -191,16 +191,6 @@ public class CRIS_MCTS extends MCTS {
 
     }
 
-    private void applyActionBeforeRollout(MCTSNode node, GameState state) {
-        try {
-            state.tick();
-            List<GameEvent> events = node.getAction().apply(node.getAgentId(), state);
-            events.forEach(state::addEvent);
-        } catch (RulesViolation rv) {
-            throw rv;
-        }
-    }
-
     protected MCTSNode oneStepSelect(MCTSNode current, GameState state) {
         nodeExpanded = false;
         MCTSNode next;

@@ -1,6 +1,7 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize;
 
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.ConventionUtils;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsCollator;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.*;
@@ -12,27 +13,35 @@ import java.util.stream.*;
 
 public class HandDeterminiser {
 
+    private static long totalActionCount, totalPlay, totalDiscard, universeShiftCountOnPlay, universeShiftCountOnDiscard;
     private int slotLastUsed;
     private List<List<Card>> handRecord;
     private int playerCount, rootAgent;
+    private boolean alwaysRedeterminise;
     private Card cardLastUsed;
     private Random r = new Random(26678);
     private Logger logger = LoggerFactory.getLogger(HandDeterminiser.class);
 
-    public HandDeterminiser(GameState state, int rootID) {
+    public HandDeterminiser(GameState state, int rootID, boolean MRIS) {
         playerCount = state.getPlayerCount();
+        alwaysRedeterminise = MRIS;
         rootAgent = rootID;
         slotLastUsed = -1;
-        handRecord = new ArrayList<>(playerCount);
-        for (int i = 0; i < playerCount; i++) {
-            handRecord.add(new ArrayList<>());
-        }
+
         // we then do our one-off determinisation of the root players cards
         for (int i = 0; i < state.getHandSize(); i++)
             if (state.getHand(rootID).getCard(i) != null) {
                 state.getDeck().add(state.getCardAt(rootID, i));
             }
         AllPlayerDeterminiser.bindNewCards(rootID, state);
+
+        // and then store the 'master set' to save back to, and track inconsistent rollouts
+        handRecord = IntStream.range(0, playerCount)
+                .mapToObj(i -> IntStream.range(0, state.getHandSize())
+                        .mapToObj(state.getHand(i)::getCard)
+                        .collect(Collectors.toList()))
+                .collect(Collectors.toList());
+
         if (logger.isDebugEnabled()) {
             String handString = IntStream.range(0, state.getHandSize())
                     .mapToObj(state.getHand(rootID)::getCard)
@@ -46,15 +55,15 @@ public class HandDeterminiser {
         Hand myHand = state.getHand(agentID);
         Deck deck = state.getDeck();
 
-        // record cards currently in hand for agent, so we can go back to these after their turn
-        List<Card> handDetail = new ArrayList<>(state.getHandSize());
-        handRecord.set(agentID, handDetail);
-        for (int slot = 0; slot < state.getHandSize(); slot++) {
-            handDetail.add(myHand.getCard(slot));
-        }
-
         // reset the hand of the previous agent (if not root) to known values where possible
         reset(agentID, state);
+
+        // if the last move was Play or Discard a card, then we must update the handRecord for the previous player
+        // as they have now drawn a card to replace the one Played or Discarded
+        if (slotLastUsed != -1) {
+            int previousAgent = (agentID + state.getPlayerCount() - 1) % state.getPlayerCount();
+            handRecord.get(previousAgent).set(slotLastUsed, state.getCardAt(previousAgent, slotLastUsed));
+        }
 
         // put current hand back into deck (except for the root agent)
         // and then bind new values
@@ -86,6 +95,7 @@ public class HandDeterminiser {
         // We do not do this for the root agent, as their hand is determinised once for each rollout at initialisation
         // So they keep exactly what happens as events occur in any given rollout
         // (the same reason we skip them in determiniseHandFor()
+        if (alwaysRedeterminise) return;        // In MRIS mode we never reset cards, but stay in the new game
 
         int previousAgent = (agentID + state.getPlayerCount() - 1) % state.getPlayerCount();
         Hand previousHand = state.getHand(previousAgent);
@@ -106,11 +116,15 @@ public class HandDeterminiser {
                         }
                     }
                 }
-                if (cardLastUsed != null && previousCards.contains(cardLastUsed) && !previousCards.get(slotLastUsed).equals(cardLastUsed)) {
+                List<Card> previousMinusSlotUsed = IntStream.range(0, previousCards.size())
+                        .filter(i -> i != slotLastUsed).mapToObj(previousCards::get).collect(Collectors.toList());
+                if (cardLastUsed != null && previousMinusSlotUsed.contains(cardLastUsed)) {
                     // this is another special case, in which the card we discarded was in our previous hand (but in another slot)
                     // in this case we must not naively re-bind it, as that might create a new card!
                     // Instead we re-bind any valid card that meets the criteria for the slot
                     otherSlotToRedraw = previousCards.indexOf(cardLastUsed);
+                    if (otherSlotToRedraw == slotLastUsed)
+                        otherSlotToRedraw = previousCards.lastIndexOf(cardLastUsed);
                 }
                 for (int slot = 0; slot < previousHand.getSize(); slot++) {
                     if (slot == slotLastUsed || slot == otherSlotToRedraw) {
@@ -148,13 +162,32 @@ public class HandDeterminiser {
     }
 
 
+    /* This is called before we aply the action to the GameState
+        so all the cards are still in position
+     */
     public void recordAction(Action action, int playerID, GameState state) {
         slotLastUsed = -1;
         cardLastUsed = null;
-        if (action instanceof PlayCard) slotLastUsed = ((PlayCard) action).slot;
-        if (action instanceof DiscardCard) slotLastUsed = ((DiscardCard) action).slot;
+        totalActionCount++;
+        if (action instanceof PlayCard) {
+            slotLastUsed = ((PlayCard) action).slot;
+            totalPlay++;
+        }
+        if (action instanceof DiscardCard) {
+            slotLastUsed = ((DiscardCard) action).slot;
+            totalDiscard++;
+        }
         if (slotLastUsed != -1) {
             cardLastUsed = state.getCardAt(playerID, slotLastUsed);
+            if (!cardLastUsed.equals(getHandRecord(playerID, slotLastUsed))) {
+                // the card that we played or discarded was different to the one everyone else knew we had
+                // i.e. it was IS-Incompatible to them. We have shifted game universe.
+                if (action instanceof PlayCard) {
+                    universeShiftCountOnPlay++;
+                } else {
+                    universeShiftCountOnDiscard++;
+                }
+            }
         }
     }
 
@@ -165,5 +198,33 @@ public class HandDeterminiser {
 
     public int getSlotLastUsed() {
         return slotLastUsed;
+    }
+
+    public static double percentageUniverseShiftOfPlay() {
+        return (double) universeShiftCountOnPlay / (double) totalPlay;
+    }
+
+    public static double percentageUniverseShiftOfDiscard() {
+        return (double) universeShiftCountOnDiscard / (double) totalDiscard;
+    }
+
+    public static double percentageUniverseShiftOfTotal() {
+        return (double) (universeShiftCountOnDiscard + universeShiftCountOnPlay) / (double) totalActionCount;
+    }
+
+    public static void resetUniverseShift() {
+        totalActionCount = 0;
+        totalDiscard = 0;
+        totalPlay = 0;
+        universeShiftCountOnPlay = 0;
+        universeShiftCountOnDiscard = 0;
+    }
+
+    public static long getUniverseShiftPlay() {
+        return universeShiftCountOnPlay;
+    }
+
+    public static long getUniverseShiftDiscard() {
+        return universeShiftCountOnDiscard;
     }
 }

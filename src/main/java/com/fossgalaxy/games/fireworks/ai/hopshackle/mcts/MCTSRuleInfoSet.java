@@ -81,14 +81,14 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
      * @param treeDepthMul
      * @param timeLimit    in ms
      */
-    @AgentConstructor("hs-mctsRuleMR")
+    @AgentConstructor("hs-RISRule")
     public MCTSRuleInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         expansionPolicy = new RuleExpansionPolicy(logger, random, allRules);
     }
 
-    @AgentConstructor("hs-mctsRuleMRPolicy")
+    @AgentConstructor("hs-RISRulePolicy")
     public MCTSRuleInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         this.rolloutPolicy = rollout;

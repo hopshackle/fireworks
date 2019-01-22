@@ -4,6 +4,7 @@ import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.HandDeterminiser;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGatherer;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGathererFullTree;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsCollator;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.Card;
 import com.fossgalaxy.games.fireworks.state.Deck;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class MCTSInfoSet extends MCTS {
 
     protected HandDeterminiser handDeterminiser;
+    protected boolean MRIS = false;
 
     /**
      * Create a default MCTS implementation.
@@ -45,13 +47,13 @@ public class MCTSInfoSet extends MCTS {
      * @param treeDepthMul
      * @param timeLimit    in ms
      */
-    @AgentConstructor("hs-mctsMR")
+    @AgentConstructor("hs-RIS")
     public MCTSInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
     }
 
-    @AgentConstructor("hs-mctsMRPolicy")
+    @AgentConstructor("hs-RISPolicy")
     public MCTSInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         this.rolloutPolicy = rollout;
@@ -67,10 +69,30 @@ public class MCTSInfoSet extends MCTS {
             rollouts++;
             GameState currentState = state.getCopy();
 
-            handDeterminiser = new HandDeterminiser(currentState, agentID);
-
+            handDeterminiser = new HandDeterminiser(currentState, agentID, MRIS);
+            long oldShiftsPlay = HandDeterminiser.getUniverseShiftPlay();
+            long oldShiftsDiscard = HandDeterminiser.getUniverseShiftDiscard();
             MCTSNode current = select(root, currentState, movesLeft);
             // reset to known hand values before rollout
+            Map<String, Double> shiftData = new HashMap<>();
+            if (HandDeterminiser.getUniverseShiftDiscard() == oldShiftsDiscard && HandDeterminiser.getUniverseShiftPlay() == oldShiftsPlay) {
+                shiftData.put("CONSISTENT_ROLLOUT", 1.0);
+                shiftData.put("CONSISTENT_PLAY", 1.0);
+                shiftData.put("CONSISTENT_DISCARD", 1.0);
+            } else {
+                shiftData.put("CONSISTENT_ROLLOUT", 0.0);
+                if (HandDeterminiser.getUniverseShiftPlay() == oldShiftsPlay) {
+                    shiftData.put("CONSISTENT_PLAY", 1.0);
+                } else {
+                    shiftData.put("CONSISTENT_PLAY", 0.0);
+                }
+                if (HandDeterminiser.getUniverseShiftDiscard() == oldShiftsDiscard) {
+                    shiftData.put("CONSISTENT_DISCARD", 1.0);
+                } else {
+                    shiftData.put("CONSISTENT_DISCARD", 0.0);
+                }
+            }
+            StatsCollator.addStatistics(shiftData);
             handDeterminiser.reset((current.getAgentId() + 1) % currentState.getPlayerCount(), currentState);
 
             if (current.getDepth() > deepestNode) deepestNode = current.getDepth();

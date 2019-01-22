@@ -113,7 +113,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
             rollouts++;
             GameState currentState = state.getCopy();
 
-            handDeterminiser = new HandDeterminiser(currentState, agentID);
+            handDeterminiser = new HandDeterminiser(currentState, agentID, false);
 
             MCTSNode current = select(root, currentState, movesLeft);
             // reset to known hand values before rollout
@@ -297,7 +297,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
             return;    // side-effect, not a deliberate action
 
         GameState determinisedLastState = lastState.getCopy();
-        handDeterminiser = new HandDeterminiser(determinisedLastState, rootPlayer);
+        handDeterminiser = new HandDeterminiser(determinisedLastState, rootPlayer, false);
 
         double[] lik = brain.process(featureData(event, determinisedLastState, playerID));
         // then normalise

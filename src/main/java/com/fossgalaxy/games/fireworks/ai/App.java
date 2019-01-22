@@ -3,6 +3,7 @@ package com.fossgalaxy.games.fireworks.ai;
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.*;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTS;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.HandDeterminiser;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.*;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsSummary;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsCollator;
@@ -114,6 +115,12 @@ public class App
                 scoreSummary.getMax(),
                 scoreSummary.getStdErr(),
                 timeSummary.getMean()));
+
+        Map<String, Double> universeStats = new HashMap<>();
+        universeStats.put("UNIVERSE_SHIFT_TOTAL", HandDeterminiser.percentageUniverseShiftOfTotal());
+        universeStats.put("UNIVERSE_SHIFT_PLAY", HandDeterminiser.percentageUniverseShiftOfPlay());
+        universeStats.put("UNIVERSE_SHIFT_DISCARD", HandDeterminiser.percentageUniverseShiftOfDiscard());
+        StatsCollator.addStatistics(universeStats);
 
         System.out.println(StatsCollator.summaryString());
     }
