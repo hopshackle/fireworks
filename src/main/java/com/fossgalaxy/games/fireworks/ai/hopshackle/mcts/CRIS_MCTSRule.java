@@ -25,17 +25,16 @@ public class CRIS_MCTSRule extends CRIS_MCTS {
      * @param treeDepthMul
      * @param timeLimit    in ms
      */
-    @AgentConstructor("hs-CRISRule")
     public CRIS_MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         expansionPolicy = new RuleExpansionPolicy(logger, random, MCTSRuleInfoSet.allRules);
     }
 
-    @AgentConstructor("hs-CRISRulePolicy")
+    @AgentConstructor("hs-CRISRule")
     public CRIS_MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        this.rolloutPolicy = rollout;
+        rolloutPolicy = rollout == null ? new RandomAgent() : rollout;
         // TODO: Parameterise this more elegantly in future
         if (rollout instanceof EvalFnAgent)
             expansionPolicy = new RuleFullExpansion(logger, random, MCTSRuleInfoSet.allRules, Optional.empty(), Optional.of((EvalFnAgent) rollout));

@@ -63,7 +63,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
      * @param treeDepthMul
      * @param timeLimit    in ms
      */
-    @AgentConstructor("hs-mcts")
+
     public MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
 //        this.roundLength = roundLength;
         this.rolloutDepth = rolloutDepth;
@@ -74,10 +74,10 @@ public class MCTS implements Agent, HasGameOverProcessing {
         expansionPolicy = new SimpleNodeExpansion(logger, random);
     }
 
-    @AgentConstructor("hs-mctsPolicy")
+    @AgentConstructor("hs-IS")
     public MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        rolloutPolicy = rollout;
+        rolloutPolicy = rollout == null ? new RandomAgent() : rollout;
     }
 
     public void setStateGatherer(StateGatherer sg) {
@@ -256,7 +256,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
 
     protected Action selectActionForRollout(GameState state, int playerID) {
         if (rolloutPolicy == null) {
-            return randomAction(state, playerID);
+            throw new AssertionError("No rollout policy specified");
         } else {
             try {
                 // we first need to ensure Player's hand is back in deck
@@ -279,31 +279,16 @@ public class MCTS implements Agent, HasGameOverProcessing {
                 return chosenAction;
             } catch (IllegalArgumentException ex) {
                 logger.error("warning, agent failed to make move: {}", ex);
-                return randomAction(state, playerID);
+                return new RandomAgent().doMove(playerID, state);
             }
             catch (IllegalStateException ex) {
                 logger.error("Problem with Rules in rollout {} for player {} using policy {}", ex, playerID, rolloutPolicy);
                 DebugUtils.printState(logger, state);
-                return randomAction(state, playerID);
+                return new RandomAgent().doMove(playerID, state);
             }
         }
     }
 
-    private Action randomAction(GameState state, int playerID) {
-        Collection<Action> legalActions = Utils.generateActions(playerID, state);
-
-        List<Action> listAction = new ArrayList<>(legalActions);
-        Collections.shuffle(listAction);
-        if (listAction.isEmpty()) {
-            for (int i = 0; i < state.getHandSize(); i++) {
-                if (state.getHand(playerID).hasCard(i)) {
-                    return new DiscardCard(i);
-                }
-            }
-        }
-
-        return listAction.get(0);
-    }
 
     protected double rollout(GameState state, MCTSNode current, int movesLeft) {
 

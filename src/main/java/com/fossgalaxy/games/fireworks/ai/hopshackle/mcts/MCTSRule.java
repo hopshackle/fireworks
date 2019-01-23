@@ -18,17 +18,16 @@ public class MCTSRule extends MCTS {
      * @param treeDepthMul
      * @param timeLimit    in ms
      */
-    @AgentConstructor("hs-mctsRule")
     public MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         expansionPolicy = new RuleExpansionPolicy(logger, random, MCTSRuleInfoSet.allRules);
     }
 
-    @AgentConstructor("hs-mctsRulePolicy")
+    @AgentConstructor("hs-ISRule")
     public MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        this.rolloutPolicy = rollout;
+        rolloutPolicy = rollout == null ? new RandomAgent() : rollout;
         if (rollout instanceof EvalFnAgent)
             expansionPolicy = new RuleFullExpansion(logger, random, MCTSRuleInfoSet.allRules, Optional.empty(), Optional.of((EvalFnAgent) rollout));
     }

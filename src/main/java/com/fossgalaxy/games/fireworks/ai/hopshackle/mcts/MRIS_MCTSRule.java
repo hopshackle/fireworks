@@ -14,13 +14,12 @@ public class MRIS_MCTSRule extends MCTSRuleInfoSet {
         this(expConst, DEFAULT_ROLLOUT_DEPTH, DEFAULT_TREE_DEPTH_MUL, DEFAULT_TIME_LIMIT);
     }
 
-    @AgentConstructor("hs-MRISRule")
     public MRIS_MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         MRIS = true;
     }
 
-    @AgentConstructor("hs-MRISRulePolicy")
+    @AgentConstructor("hs-MRISRule")
     public MRIS_MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rollout);
         MRIS = true;

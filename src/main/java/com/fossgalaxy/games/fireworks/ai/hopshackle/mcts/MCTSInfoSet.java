@@ -2,16 +2,10 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.HandDeterminiser;
-import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGatherer;
-import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGathererFullTree;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsCollator;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
-import com.fossgalaxy.games.fireworks.state.Card;
-import com.fossgalaxy.games.fireworks.state.Deck;
-import com.fossgalaxy.games.fireworks.state.GameState;
-import com.fossgalaxy.games.fireworks.state.Hand;
+import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
-import com.fossgalaxy.games.fireworks.state.actions.PlayCard;
 import com.fossgalaxy.games.fireworks.state.events.GameEvent;
 
 import java.util.*;
@@ -47,16 +41,16 @@ public class MCTSInfoSet extends MCTS {
      * @param treeDepthMul
      * @param timeLimit    in ms
      */
-    @AgentConstructor("hs-RIS")
+
     public MCTSInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
     }
 
-    @AgentConstructor("hs-RISPolicy")
+    @AgentConstructor("hs-RIS")
     public MCTSInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        this.rolloutPolicy = rollout;
+        rolloutPolicy = rollout == null ? new RandomAgent() : rollout;
     }
 
     @Override

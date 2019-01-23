@@ -21,14 +21,13 @@ public class MRIS_MCTS extends MCTSInfoSet {
      * @param treeDepthMul
      * @param timeLimit    in ms
      */
-    @AgentConstructor("hs-MRIS")
     public MRIS_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         MRIS = true;
     }
 
-    @AgentConstructor("hs-MRISPolicy")
+    @AgentConstructor("hs-MRIS")
     public MRIS_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rollout);
         MRIS = true;

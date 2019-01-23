@@ -10,7 +10,7 @@ import java.util.Optional;
 
 public class MCTSRuleInfoSetFullExpansion extends MCTSRuleInfoSet {
 
-    @AgentConstructor("hs-mctsRuleFE")
+    @AgentConstructor("hs-RISRuleFE")
     public MCTSRuleInfoSetFullExpansion(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent agent) {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);

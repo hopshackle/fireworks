@@ -15,15 +15,14 @@ public class CRIS_MCTS extends MCTS {
     /*
     Consistent Re-determinising Information Set Monte Carlo Tree Search
      */
-    @AgentConstructor("CRIS-MCTS")
     public CRIS_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
     }
-    @AgentConstructor("CRIS-MCTSPolicy")
+    @AgentConstructor("hs-CRIS")
     public CRIS_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        this.rolloutPolicy = rollout;
+        rolloutPolicy = rollout == null ? new RandomAgent() : rollout;
     }
 
 
