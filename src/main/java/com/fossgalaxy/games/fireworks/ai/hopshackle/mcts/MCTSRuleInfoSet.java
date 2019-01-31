@@ -90,7 +90,7 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
     @AgentConstructor("hs-RISRule")
     public MCTSRuleInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        rolloutPolicy = rollout == null ? new RandomAgent() : rollout;
+        rolloutPolicy = rollout == null ? new RandomEqual(0) : rollout;
         // TODO: Parameterise this more elegantly in future
         if (rollout instanceof EvalFnAgent)
             expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.empty(), Optional.of((EvalFnAgent) rollout));

@@ -3,7 +3,6 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.*;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.*;
-import com.fossgalaxy.games.fireworks.ai.iggi.Utils;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.*;
@@ -77,7 +76,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
     @AgentConstructor("hs-IS")
     public MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        rolloutPolicy = rollout == null ? new RandomAgent() : rollout;
+        rolloutPolicy = rollout == null ? new RandomEqual(0) : rollout;
     }
 
     public void setStateGatherer(StateGatherer sg) {
@@ -279,12 +278,12 @@ public class MCTS implements Agent, HasGameOverProcessing {
                 return chosenAction;
             } catch (IllegalArgumentException ex) {
                 logger.error("warning, agent failed to make move: {}", ex);
-                return new RandomAgent().doMove(playerID, state);
+                return new RandomEqual(0).doMove(playerID, state);
             }
             catch (IllegalStateException ex) {
                 logger.error("Problem with Rules in rollout {} for player {} using policy {}", ex, playerID, rolloutPolicy);
                 DebugUtils.printState(logger, state);
-                return new RandomAgent().doMove(playerID, state);
+                return new RandomEqual(0).doMove(playerID, state);
             }
         }
     }

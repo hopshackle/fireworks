@@ -27,7 +27,7 @@ public class MCTSRule extends MCTS {
     @AgentConstructor("hs-ISRule")
     public MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        rolloutPolicy = rollout == null ? new RandomAgent() : rollout;
+        rolloutPolicy = rollout == null ? new RandomEqual(0) : rollout;
         if (rollout instanceof EvalFnAgent)
             expansionPolicy = new RuleFullExpansion(logger, random, MCTSRuleInfoSet.allRules, Optional.empty(), Optional.of((EvalFnAgent) rollout));
     }

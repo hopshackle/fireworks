@@ -14,7 +14,7 @@ import java.util.stream.*;
 public class HandDeterminiser {
 
     private static long totalActionCount, totalPlay, totalDiscard, universeShiftCountOnPlay, universeShiftCountOnDiscard;
-    private int slotLastUsed;
+    private int slotLastUsed, otherSlotLastUsed;
     private List<List<Card>> handRecord;
     private int playerCount, rootAgent;
     private boolean alwaysRedeterminise;
@@ -27,6 +27,7 @@ public class HandDeterminiser {
         alwaysRedeterminise = MRIS;
         rootAgent = rootID;
         slotLastUsed = -1;
+        otherSlotLastUsed = -1;
 
         // we then do our one-off determinisation of the root players cards
         for (int i = 0; i < state.getHandSize(); i++)
@@ -54,6 +55,7 @@ public class HandDeterminiser {
     public void determiniseHandFor(int agentID, GameState state) {
         Hand myHand = state.getHand(agentID);
         Deck deck = state.getDeck();
+    //    checkCardTotal(state);
 
         // reset the hand of the previous agent (if not root) to known values where possible
         reset(agentID, state);
@@ -63,6 +65,10 @@ public class HandDeterminiser {
         if (slotLastUsed != -1) {
             int previousAgent = (agentID + state.getPlayerCount() - 1) % state.getPlayerCount();
             handRecord.get(previousAgent).set(slotLastUsed, state.getCardAt(previousAgent, slotLastUsed));
+        }
+        if (otherSlotLastUsed != -1) {
+            int previousAgent = (agentID + state.getPlayerCount() - 1) % state.getPlayerCount();
+            handRecord.get(previousAgent).set(otherSlotLastUsed, state.getCardAt(previousAgent, otherSlotLastUsed));
         }
 
         // put current hand back into deck (except for the root agent)
@@ -77,8 +83,11 @@ public class HandDeterminiser {
             AllPlayerDeterminiser.bindNewCards(agentID, state);
         }
         deck.shuffle();
+        checkCardTotal(state);
+    }
 
-        int totalCards = state.getScore() + deck.getCardsLeft() + state.getDiscards().size();
+    private void checkCardTotal(GameState state) {
+        int totalCards = state.getScore() + state.getDeck().getCardsLeft() + state.getDiscards().size();
         for (int i = 0; i < state.getPlayerCount(); i++) {
             for (int j = 0; j < state.getHandSize(); j++)
                 if (state.getCardAt(i, j) != null) totalCards++;
@@ -100,10 +109,10 @@ public class HandDeterminiser {
         int previousAgent = (agentID + state.getPlayerCount() - 1) % state.getPlayerCount();
         Hand previousHand = state.getHand(previousAgent);
         Deck deck = state.getDeck();
+        List<Card> previousCards = handRecord.get(previousAgent);
+        otherSlotLastUsed = -1;
         if (previousAgent != rootAgent) {
-            List<Card> previousCards = handRecord.get(previousAgent);
             if (!previousCards.isEmpty()) {
-                int otherSlotToRedraw = -1;
                 for (int slot = 0; slot < previousHand.getSize(); slot++) {
                     if (state.getCardAt(previousAgent, slot) != null) {
                         if (slot == slotLastUsed) {
@@ -122,21 +131,25 @@ public class HandDeterminiser {
                     // this is another special case, in which the card we discarded was in our previous hand (but in another slot)
                     // in this case we must not naively re-bind it, as that might create a new card!
                     // Instead we re-bind any valid card that meets the criteria for the slot
-                    otherSlotToRedraw = previousCards.indexOf(cardLastUsed);
-                    if (otherSlotToRedraw == slotLastUsed)
-                        otherSlotToRedraw = previousCards.lastIndexOf(cardLastUsed);
+                    otherSlotLastUsed = previousCards.indexOf(cardLastUsed);
+                    if (otherSlotLastUsed == slotLastUsed)
+                        otherSlotLastUsed = previousCards.lastIndexOf(cardLastUsed);
                 }
                 for (int slot = 0; slot < previousHand.getSize(); slot++) {
-                    if (slot == slotLastUsed || slot == otherSlotToRedraw) {
+                    if (slot == slotLastUsed || slot == otherSlotLastUsed) {
                         // wait until all known cards have been rebound
-                    } else {
+                    } else if (previousCards.get(slot) != null) {
                         previousHand.bindCard(slot, previousCards.get(slot));   // re-bind card
+                        int deckSize = deck.getCardsLeft();
                         deck.remove(previousCards.get(slot));  // and remove it from the deck
+                        if (deck.getCardsLeft() == deckSize) {
+                            throw new AssertionError("Ooops - this should have declined");
+                        }
                     }
                 }
-                if (otherSlotToRedraw > -1) {
+                if (otherSlotLastUsed > -1) {
                     // we need to draw a card that is compatible with our known information
-                    List<Card> possibles = DeckUtils.bindBlindCard(previousAgent, previousHand, deck.toList()).get(otherSlotToRedraw);
+                    List<Card> possibles = DeckUtils.bindBlindCard(previousAgent, previousHand, deck.toList()).get(otherSlotLastUsed);
                     if (possibles.isEmpty()) {
                         // OK. This *can* occur because the only card(s) that are now bindable
                         // are in fact sitting elsewhere in the hand and are not in the deck.
@@ -144,10 +157,10 @@ public class HandDeterminiser {
                         // recurse?
                         // or we wimp out and bind a random card, wiping out the information in the slot
                         deck.shuffle();
-                        previousHand.setCard(otherSlotToRedraw, deck.getTopCard()); // this wipes known information
+                        previousHand.setCard(otherSlotLastUsed, deck.getTopCard()); // this wipes known information
                     } else {
                         Card chosen = possibles.get(r.nextInt(possibles.size()));
-                        previousHand.bindCard(otherSlotToRedraw, chosen);
+                        previousHand.bindCard(otherSlotLastUsed, chosen);
                         deck.remove(chosen);
                     }
                 }
@@ -159,6 +172,7 @@ public class HandDeterminiser {
                 }
             }
         }
+  //      checkCardTotal(state);
     }
 
 

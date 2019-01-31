@@ -2,14 +2,10 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.*;
-import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.*;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.*;
-import com.fossgalaxy.games.fireworks.state.actions.*;
-import com.fossgalaxy.games.fireworks.state.events.*;
 
 import java.util.*;
-import java.util.stream.*;
 
 public class CRIS_MCTS extends MCTS {
     /*
@@ -22,7 +18,7 @@ public class CRIS_MCTS extends MCTS {
     @AgentConstructor("hs-CRIS")
     public CRIS_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        rolloutPolicy = rollout == null ? new RandomAgent() : rollout;
+        rolloutPolicy = rollout == null ? new RandomEqual(0) : rollout;
     }
 
 

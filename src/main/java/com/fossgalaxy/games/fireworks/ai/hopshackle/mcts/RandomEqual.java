@@ -9,10 +9,10 @@ import com.fossgalaxy.games.fireworks.state.actions.DiscardCard;
 
 import java.util.*;
 
-public class RandomAgent implements Agent {
+public class RandomEqual implements Agent {
 
     @AgentConstructor("hs-random")
-    public RandomAgent() {
+    public RandomEqual(int bit) {
 
     }
 

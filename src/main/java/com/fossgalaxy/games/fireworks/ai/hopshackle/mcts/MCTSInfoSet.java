@@ -50,7 +50,7 @@ public class MCTSInfoSet extends MCTS {
     @AgentConstructor("hs-RIS")
     public MCTSInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        rolloutPolicy = rollout == null ? new RandomAgent() : rollout;
+        rolloutPolicy = rollout == null ? new RandomEqual(0) : rollout;
     }
 
     @Override
