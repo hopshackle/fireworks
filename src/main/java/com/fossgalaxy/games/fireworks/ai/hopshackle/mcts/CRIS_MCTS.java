@@ -2,12 +2,16 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.*;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsCollator;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.*;
 
 import java.util.*;
 
 public class CRIS_MCTS extends MCTS {
+
+    protected int branches = 0, nonBranches =0;
+
     /*
     Consistent Re-determinising Information Set Monte Carlo Tree Search
      */
@@ -15,6 +19,7 @@ public class CRIS_MCTS extends MCTS {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
     }
+
     @AgentConstructor("hs-CRIS")
     public CRIS_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
@@ -30,7 +35,9 @@ public class CRIS_MCTS extends MCTS {
     protected void executeSearch(int agentID, MCTSNode root, GameState state, int movesLeft) {
         long finishTime = System.currentTimeMillis() + timeLimit;
 
-        while (System.currentTimeMillis() < finishTime || rollouts == 0) {
+        branches = 0;
+        nonBranches = 0;
+        while (System.currentTimeMillis() < finishTime && rollouts < timeLimit * 2) {
             //find a leaf node
             rollouts++;
             AllPlayerDeterminiser apd = new AllPlayerDeterminiser(state, agentID);
@@ -40,13 +47,15 @@ public class CRIS_MCTS extends MCTS {
                 System.out.println(root.printD3());
             }
         }
+        StatsCollator.addStatistics("BRANCHING_COUNT", (double) branches);
+        StatsCollator.addStatistics("NON_BRANCHING_COUNT", (double) nonBranches);
     }
 
     protected void executeBranchingSearch(int agentID, AllPlayerDeterminiser apd, MCTSNode root, int movesLeft) {
 
         GameState state = apd.getDeterminisationFor(agentID);
         if (state.isGameOver() || movesLeft < 1) {
-            root.backup(state.getScore(), apd.getParentNode());
+            root.backup(state.getScore(), null, apd.getParentNode());
             return;
         }
         /*
@@ -58,12 +67,10 @@ public class CRIS_MCTS extends MCTS {
         //      MCTSNode[] next = new MCTSNode[state.getPlayerCount()];
         //     boolean[] expanded = new boolean[state.getPlayerCount()];
         MCTSNode next = null;
-        int iteration = 0;
         int possibleActions = root.allUnexpandedActions.size() + root.getChildren().size();
         boolean activeActionConsistentWithMasterDeterminisation = false;
         do {
             if (root.getDepth() < treeDepth) {
-                iteration++;
 
                 // put active hand into deck for decision making
                 Hand myHand = state.getHand(agentID);
@@ -81,7 +88,7 @@ public class CRIS_MCTS extends MCTS {
                 if (root instanceof MCTSRuleNode)
                     possibleActions = ((MCTSRuleNode) root).getAllLegalMoves(state, agentID).size();
 
-                next = oneStepSelect(root, state);
+                next = oneStepSelect(root, state, apd);
 
                 // then undo hand to deck hack before proceeding
                 for (int i = 0; i < hand.length; i++) {
@@ -117,7 +124,7 @@ public class CRIS_MCTS extends MCTS {
                 double score = rollout(apd.getMasterDeterminisation().getCopy(), root, movesLeft);
                 if (logger.isDebugEnabled())
                     logger.debug(String.format("Rollout at tree limit give score of %.2f", score));
-                root.backup(score, apd.getParentNode());
+                root.backup(score, null, apd.getParentNode());
                 if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
                 return;
             } else {
@@ -139,11 +146,14 @@ public class CRIS_MCTS extends MCTS {
                 if (possibleActions == 1) {
                     // if we only have one action, then there is no point branching...as this will only improve the opponent model at this node
                     // and this information will never be used...all we want to do is find an action that is compatible with the master determinisation
-                    if (!activeActionConsistentWithMasterDeterminisation)
+                    if (!activeActionConsistentWithMasterDeterminisation) {
                         apd.redeterminiseWithinIS(agentID);
+                        nonBranches++;
+                    }
                 } else {
                     for (int i : branchesNeeded) {
                         // we need to branch
+                        branches++;
                         AllPlayerDeterminiser newApd = new AllPlayerDeterminiser(apd.getDeterminisationFor(i), i);
                         newApd.setParentNode(root);
                         newApd.applyAndCompatibilise(next, true); // we use the action taken by the active determinisation
@@ -151,7 +161,7 @@ public class CRIS_MCTS extends MCTS {
                             logger.debug(String.format("Launching search for %s", newApd));
                         if (nodeExpanded) {
                             double score = rollout(newApd.getDeterminisationFor(i), next, movesLeft - 1);
-                            next.backup(score, root);
+                            next.backup(score, null, root);
                             if (logger.isDebugEnabled())
                                 logger.debug(String.format("Backing up a final score of %.2f", score));
                         } else {
@@ -164,12 +174,7 @@ public class CRIS_MCTS extends MCTS {
                 }
             }
         } while (!activeActionConsistentWithMasterDeterminisation);
-        // if only one action is possible, then data we gather from branched rollouts cannot possibly be used.
-        // the apd that back-propagates will always use the known values of the discarded card.
 
-        if (iteration > 50) {
-  //          System.out.println(String.format("Final consistent active action %s after %d iterations at depth %d", next.getAction(), iteration, root.getDepth()));
-        }
         // now that we finally have an action compatible with our master determinisation, off we go
         // Now we can kick off the APD that bought us here....up to now we have been kicking off APDs to improve
         // the local opponent model
@@ -177,8 +182,8 @@ public class CRIS_MCTS extends MCTS {
         // if we only have one possible action, then we override consistency
         if (nodeExpanded) {
             double score = rollout(apd.getMasterDeterminisation(), next, movesLeft - 1);
-            next.backup(score, apd.getParentNode());
             if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
+            next.backup(score, null, apd.getParentNode());
         } else {
             int agentNextToAct = (next.getAgentId() + 1) % state.getPlayerCount();
             executeBranchingSearch(agentNextToAct, apd, next, movesLeft - 1);
@@ -186,11 +191,11 @@ public class CRIS_MCTS extends MCTS {
 
     }
 
-    protected MCTSNode oneStepSelect(MCTSNode current, GameState state) {
+    protected MCTSNode oneStepSelect(MCTSNode current, GameState state, AllPlayerDeterminiser apd) {
         nodeExpanded = false;
         MCTSNode next;
         if (current.fullyExpanded(state)) {
-            next = current.getUCTNode(state);
+            next = current.getUCTNode(state, apd.getTriggerNode() != null);
         } else {
             next = expand(current, state);
             nodeExpanded = true;

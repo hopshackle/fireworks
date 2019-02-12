@@ -125,7 +125,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
 
             double score = rollout(currentState, current, movesLeft - current.getDepth());
             if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
-            current.backup(score, null);
+            current.backup(score, null,null);
             if (calcTree) {
                 System.out.println(root.printD3());
             }
@@ -180,7 +180,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
                 }
             } else {
                 if (current.fullyExpanded(state)) {
-                    next = current.getUCTNode(state);
+                    next = current.getUCTNode(state, false);
                 } else {
                     next = expand(current, state);
                     nodeExpanded = true;

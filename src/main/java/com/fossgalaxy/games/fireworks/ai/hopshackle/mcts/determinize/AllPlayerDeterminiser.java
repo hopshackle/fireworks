@@ -15,7 +15,7 @@ import java.util.stream.*;
 public class AllPlayerDeterminiser {
 
     protected GameState[] determinisationsByPlayer;
-    protected MCTSNode parentNode;
+    protected MCTSNode parentNode, triggerNode;
     protected int root;
     private static Logger logger = LoggerFactory.getLogger(AllPlayerDeterminiser.class);
 
@@ -185,44 +185,6 @@ public class AllPlayerDeterminiser {
 
     }
 
-    public static boolean isCompatible(Action action, int player, GameState state, GameState reference) {
-        /*
-        An action is compatible from a given full game state if:
-            - Play, Discard: the card in that slot must be the same as in the reference state
-                (the reference state is the determinisation for the acting player at this node,
-                not necessarily the root player)
-            - Tell does indeed have some of the mentioned card types
-         */
-
-        if (action instanceof PlayCard) {
-            PlayCard playCard = (PlayCard) action;
-            Card played = state.getCardAt(player, playCard.slot);
-            return (played.equals(reference.getCardAt(player, playCard.slot)));
-        }
-        if (action instanceof DiscardCard) {
-            DiscardCard discardCard = (DiscardCard) action;
-            Card discarded = state.getCardAt(player, discardCard.slot);
-            return (discarded.equals(reference.getCardAt(player, discardCard.slot)));
-        }
-        if (action instanceof TellValue) {
-            TellValue tellValue = (TellValue) action;
-            int v = tellValue.value;
-            for (int i = 0; i < state.getHandSize(); i++) {
-                if (state.getCardAt(tellValue.player, i).value == v) return true;
-            }
-            return false;
-        }
-        if (action instanceof TellColour) {
-            TellColour tellColour = (TellColour) action;
-            CardColour c = tellColour.colour;
-            for (int i = 0; i < state.getHandSize(); i++) {
-                if (state.getCardAt(tellColour.player, i).colour == c) return true;
-            }
-            return false;
-        }
-        throw new AssertionError("Unknown Action type " + action.toString() + " in compatibility check");
-    }
-
     public static boolean isConsistent(Action action, int player, GameState state, GameState reference) {
 
         if (action instanceof PlayCard) {
@@ -274,9 +236,13 @@ public class AllPlayerDeterminiser {
         return parentNode;
     }
 
+    public MCTSNode getTriggerNode() {return triggerNode;}
+
     public void setParentNode(MCTSNode node) {
         parentNode = node;
     }
+
+    public void setTriggerNode(MCTSNode node) { if (triggerNode == null) triggerNode = node;}
 
     public String toString() {
         return String.format("Root %d from node %s", root, parentNode);

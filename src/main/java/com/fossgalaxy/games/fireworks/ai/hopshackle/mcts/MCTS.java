@@ -32,10 +32,8 @@ public class MCTS implements Agent, HasGameOverProcessing {
     protected StateGatherer stateGatherer;
     protected HasGameOverProcessing endGameProcessor;
     protected final boolean calcTree = false;
-    protected int movesMade;
     protected int nodesExpanded;
     protected boolean nodeExpanded;
-    protected double maxTreeDepth, meanTreeDepth, rolloutN;
     protected int deepestNode, allNodeDepths, rollouts;
     protected ExpansionPolicy expansionPolicy;
     protected Agent rolloutPolicy;
@@ -97,7 +95,9 @@ public class MCTS implements Agent, HasGameOverProcessing {
         }
 
         MCTSNode root = createRoot((agentID - 1 + state.getPlayerCount()) % state.getPlayerCount(), state);
-
+        rollouts = 0;
+        nodesExpanded = 0;
+        allNodeDepths = 0;
         executeSearch(agentID, root, state, movesLeft);
 
         if (logger.isInfoEnabled()) {
@@ -131,10 +131,12 @@ public class MCTS implements Agent, HasGameOverProcessing {
             }
         }
 
-        movesMade++;
-        maxTreeDepth += deepestNode;
-        meanTreeDepth += allNodeDepths / (double) nodesExpanded;
-        rolloutN += rollouts;
+        Map<String, Double> stats = new HashMap<>();
+        stats.put("MAX_TREE_DEPTH", (double) deepestNode);
+        stats.put("MEAN_TREE_DEPTH", allNodeDepths / (double) nodesExpanded);
+        stats.put("NODES_EXPANDED", (double) nodesExpanded);
+        stats.put("ROLLOUTS", (double) rollouts);
+        StatsCollator.addStatistics(stats);
         return chosenOne;
     }
 
@@ -146,7 +148,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
         logDebugGameState(state, agentID);
 
 //        for (int round = 0; round < roundLength; round++) {
-        while (System.currentTimeMillis() < finishTime) {
+        while (System.currentTimeMillis() < finishTime && rollouts < timeLimit * 2) {
             rollouts++;
             //find a leaf node
             GameState currentState = state.getCopy();
@@ -168,7 +170,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
             if (nodeExpanded) nodesExpanded++;
 
             double score = rollout(currentState, current, movesLeft - current.getDepth());
-            current.backup(score, null);
+            current.backup(score, null,null);
             if (calcTree) {
                 System.out.println(root.printD3());
             }
@@ -220,7 +222,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
             MCTSNode next;
             movesLeft--;
             if (current.fullyExpanded(state)) {
-                next = current.getUCTNode(state);
+                next = current.getUCTNode(state, false);
             } else {
                 next = expand(current, state);
                 nodeExpanded = true;
@@ -332,13 +334,5 @@ public class MCTS implements Agent, HasGameOverProcessing {
     public void onGameOver(double finalScore) {
         if (endGameProcessor != null)
             endGameProcessor.onGameOver(finalScore);
-        Map<String, Double> stats = new HashMap<>();
-        stats.put("MOVES", (double) movesMade);
-        if (movesMade == 0) movesMade = 1; // as we never got a turn, so to avoid division by 0.
-        stats.put("MAX_TREE_DEPTH", maxTreeDepth / (double) movesMade);
-        stats.put("MEAN_TREE_DEPTH", meanTreeDepth / (double) movesMade);
-        stats.put("NODES_EXPANDED", nodesExpanded / (double) movesMade);
-        stats.put("ROLLOUTS", rolloutN / (double) movesMade);
-        StatsCollator.addStatistics(stats);
     }
 }

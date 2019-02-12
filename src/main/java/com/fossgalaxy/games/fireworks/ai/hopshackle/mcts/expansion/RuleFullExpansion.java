@@ -66,7 +66,7 @@ public class RuleFullExpansion extends RuleExpansionPolicy {
             }
         }
         // Now we have expanded all nodes, we use standard UCT to pick one
-        return parent.getUCTNode(state);
+        return parent.getUCTNode(state, false);
     }
 
 }

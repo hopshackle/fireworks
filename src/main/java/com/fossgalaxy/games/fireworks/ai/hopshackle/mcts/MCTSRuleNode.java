@@ -46,7 +46,7 @@ public class MCTSRuleNode extends MCTSNode {
     }
 
     @Override
-    public MCTSNode getUCTNode(GameState state) {
+    public MCTSNode getUCTNode(GameState state, boolean trial) {
         double bestScore = -Double.MAX_VALUE;
         MCTSNode bestChild = null;
 
@@ -67,7 +67,7 @@ public class MCTSRuleNode extends MCTSNode {
                 bestChild = child;
             }
         }
-        incrementParentVisitsForAllEligibleActions(state);
+        if (!trial) incrementParentVisitsForAllEligibleActions(state);
 
         if (logger.isDebugEnabled()) logger.debug(String.format("\tChosen Action is %s", bestChild == null ? "NULL" : bestChild.moveToState));
         return bestChild;

@@ -110,15 +110,17 @@ public class MCTSNode {
         return children;
     }
 
-    public void backup(double score, MCTSNode stopNode) {
+    public void backup(double score, MCTSNode triggerNode, MCTSNode stopNode) {
         MCTSNode current = this;
         int iterations = 0;
         MCTSNode last = null;
         while (current != null) {
             if (stopNode != null && stopNode == current) {
                 current = null;
+                continue;
                 // stop back-propagation
-            } else {
+            } else if (triggerNode == null || triggerNode == current) {
+                triggerNode = null;
                 if (DISCOUNT_ENABLED) {
                     current.score += score * Math.pow(0.95, current.getDepth() - 1.0);
                 } else {
@@ -126,9 +128,9 @@ public class MCTSNode {
                 }
                 iterations++;
                 current.visits++;
-                last = current;
-                current = current.parent;
             }
+            last = current;
+            current = current.parent;
         }
         logger.debug(String.format("Stopping back-prop after %d nodes stopping at %s", iterations, last.toString()));
     }
@@ -137,7 +139,7 @@ public class MCTSNode {
     /*
     Called when we descend the tree in select()
      */
-    public MCTSNode getUCTNode(GameState state) {
+    public MCTSNode getUCTNode(GameState state, boolean trial) {
         double bestScore = -Double.MAX_VALUE;
         MCTSNode bestChild = null;
 
@@ -157,7 +159,7 @@ public class MCTSNode {
                 bestChild = child;
             }
         }
-        incrementParentVisitsForAllEligibleActions(state);
+        if (!trial) incrementParentVisitsForAllEligibleActions(state);
 
         if (logger.isDebugEnabled()) logger.debug(String.format("\tChosen Action is %s", bestChild.moveToState));
         return bestChild;

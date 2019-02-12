@@ -14,14 +14,14 @@ public class StatsCollator {
     }
 
     public static void addStatistics(Map<String, Double> newStats) {
-        newStats.forEach(
-                (k, v) -> {
-                    double oldV = statistics.getOrDefault(k, 0.00);
-                    double newValue = oldV + v;
-                    statistics.put(k, newValue);
-                    N.put(k, N.getOrDefault(k, 0) + 1);
-                }
-        );
+        newStats.forEach((k, v) -> addStatistics(k, v));
+    }
+
+    public static void addStatistics(String key, Double value) {
+        double oldV = statistics.getOrDefault(key, 0.00);
+        double newValue = oldV + value;
+        statistics.put(key, newValue);
+        N.put(key, N.getOrDefault(key, 0) + 1);
     }
 
     public static String summaryString() {

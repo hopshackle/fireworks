@@ -58,7 +58,7 @@ public class MCTSInfoSet extends MCTS {
         long finishTime = System.currentTimeMillis() + timeLimit;
 
 //        for (int round = 0; round < roundLength; round++) {
-        while (System.currentTimeMillis() < finishTime || rollouts == 0) {
+        while (System.currentTimeMillis() < finishTime && rollouts < timeLimit * 2) {
             //find a leaf node
             rollouts++;
             GameState currentState = state.getCopy();
@@ -95,7 +95,7 @@ public class MCTSInfoSet extends MCTS {
 
             double score = rollout(currentState, current, movesLeft - current.getDepth());
             if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
-            current.backup(score, null);
+            current.backup(score, null, null);
             if (calcTree) {
                 System.out.println(root.printD3());
             }
@@ -140,7 +140,7 @@ public class MCTSInfoSet extends MCTS {
             }
 
             if (current.fullyExpanded(state)) {
-                next = current.getUCTNode(state);
+                next = current.getUCTNode(state, false);
             } else {
                 next = expand(current, state);
                 nodeExpanded = true;
