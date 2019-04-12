@@ -134,8 +134,8 @@ public class GameRunnerWithRandomAgents extends GameRunner {
         nextPlayer = (nextPlayer + 1) % players.length;
     }
 
-    private List<Rule> getRulesThatTriggered(Action action, GameState fromState, int agentID) {
-        return MCTSRuleInfoSet.allRules.stream()
+    public static List<Rule> getRulesThatTriggered(Action action, GameState fromState, int agentID) {
+        return MCTSRuleInfoSet.masterRuleMap.values().stream()
                 .filter(r -> {
                     Action a = r.execute(agentID, fromState);
                     if (a == null) return false;

@@ -7,6 +7,7 @@ import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.PlayProbablySafeCard;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.PlayProbablySafeLateGameCard;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.RuleExpansionPolicy;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.*;
+import com.fossgalaxy.games.fireworks.ai.rule.AbstractRule;
 import com.fossgalaxy.games.fireworks.ai.rule.CompleteTellUsefulCard;
 import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
@@ -18,29 +19,27 @@ import java.util.*;
  */
 public class MCTSRuleInfoSet extends MCTSInfoSet {
 
-    public static final List<Rule> allRules = new ArrayList<>();
-    public static final List<Rule> allRulesWithoutConventions = new ArrayList<>();
+    public static TreeMap<Integer, Rule> masterRuleMap = new TreeMap<>();
+    public List<Rule> allRules;
 
     static {
-        allRules.add(new TellNextPlayerAboutSingleUsefulCard());
-        //      allRules.add(new TellPreviousPlayerAboutSingleDiscardableCard());
-        allRules.add(new TellMostInformation(true, true));
-        allRules.add(new TellAnyoneAboutUsefulCard(true));
-        allRules.add(new TellDispensable(true));
-   //     allRules.add(new TellIllInformed(true));
-        allRules.add(new CompleteTellUsefulCard());
-        allRules.add(new CompleteTellDispensableCard());
-        allRules.add(new CompleteTellCurrentlyNotPlayableCard());
-        allRules.add(new PlayProbablySafeCard(0.7));
-        allRules.add(new PlayProbablySafeLateGameCard(0.4, 5));
-        //     allRules.add(new DiscardProbablyUselessCard(0.8));
-        //    allRules.add(new DiscardOldestFirst());
-        //     allRules.add(new DiscardOldestNoInfoFirst());
-        // allRules.add(new DiscardLeastLikelyToBeNecessary());
-        allRules.add(new DiscardProbablyUselessCard(0.0));
-        // allRules.add(new PlayBestCardIfTwoPlayerAndCannotDiscard());
-        //      allRules.add(new TellFives());
+        masterRuleMap.put(1, new TellNextPlayerAboutSingleUsefulCard());
+        masterRuleMap.put(2, new TellMostInformation(true, true));
+        masterRuleMap.put(3, new TellAnyoneAboutUsefulCard(true));
+        masterRuleMap.put(4, new TellDispensable(true));
+        masterRuleMap.put(5, new TellIllInformed(true));
+        masterRuleMap.put(6, new CompleteTellUsefulCard());
+        masterRuleMap.put(7, new CompleteTellDispensableCard());
+        masterRuleMap.put(8, new CompleteTellCurrentlyNotPlayableCard());
+        masterRuleMap.put(9, new PlayProbablySafeCard(0.7));
+        masterRuleMap.put(10, new PlayProbablySafeLateGameCard(0.4, 5));
+        masterRuleMap.put(11, new DiscardProbablyUselessCard(0.8));
+        masterRuleMap.put(12, new DiscardLeastLikelyToBeNecessary());
+        masterRuleMap.put(13, new DiscardProbablyUselessCard(0.0));
+        masterRuleMap.put(14, new PlayBestCardIfTwoPlayerAndCannotDiscard());
+        masterRuleMap.put(15, new TellNotDiscardable(true));
 
+        /*
         allRulesWithoutConventions.add(new TellMostInformation(true, false));
         allRulesWithoutConventions.add(new TellAnyoneAboutUsefulCard(false));
         allRulesWithoutConventions.add(new TellDispensable(false));
@@ -57,43 +56,34 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
         allRulesWithoutConventions.add(new DiscardProbablyUselessCard(0.0));
     //    allRulesWithoutConventions.add(new PlayBestCardIfTwoPlayerAndCannotDiscard());
         //      allRules.add(new TellFives());
-    }
-
-    /**
-     * Create a default MCTS implementation.
-     * <p>
-     * This creates an MCTS agent that has a default roll-out length of 50_000 iterations, a depth of 18 and a tree
-     * multiplier of 1.
-     */
-    public MCTSRuleInfoSet() {
-        this(MCTSNode.DEFAULT_EXP_CONST, DEFAULT_ROLLOUT_DEPTH, DEFAULT_TREE_DEPTH_MUL, DEFAULT_TIME_LIMIT);
-    }
-
-    public MCTSRuleInfoSet(double expConst) {
-        this(expConst, DEFAULT_ROLLOUT_DEPTH, DEFAULT_TREE_DEPTH_MUL, DEFAULT_TIME_LIMIT);
-    }
-
-    /**
-     * Create an MCTS agent which has the parameters.
-     *
-     * @param explorationC
-     * @param rolloutDepth
-     * @param treeDepthMul
-     * @param timeLimit    in ms
-     */
-    public MCTSRuleInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
-//        this.roundLength = roundLength;
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        expansionPolicy = new RuleExpansionPolicy(logger, random, allRules);
+        allRulesWithoutConventions.add(new TellNotDiscardable(false));
+        */
     }
 
     @AgentConstructor("hs-RISRule")
-    public MCTSRuleInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
-        this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
+    public MCTSRuleInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String ruleMnemonics, Agent rollout) {
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
+        allRules = initialiseRules(ruleMnemonics);
         rolloutPolicy = rollout == null ? new RandomEqual(0) : rollout;
         // TODO: Parameterise this more elegantly in future
         if (rollout instanceof EvalFnAgent)
-            expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.empty(), Optional.of((EvalFnAgent) rollout));
+            expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.of((EvalFnAgent) rollout));
+        else
+            expansionPolicy = new RuleExpansionPolicy(logger, random, allRules);
+    }
+
+    public static List<Rule> initialiseRules(String mnemonics) {
+        List<Rule> retValue = new ArrayList<>();
+        String[] ruleArray = mnemonics.split("[|]");
+        for (String mnemonic : ruleArray) {
+            Integer key = Integer.valueOf(mnemonic);
+            if (masterRuleMap.containsKey(key)){
+                retValue.add(masterRuleMap.get(key));
+            } else {
+                throw new AssertionError("Mnemonic for rule does not exist: " + mnemonic);
+            }
+        }
+        return retValue;
     }
 
 

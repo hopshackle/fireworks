@@ -54,16 +54,16 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         opponentModelFullList.add(IGGIFactory.buildPiersPlayer());
         opponentModelFullList.add(BoardGameGeekFactory.buildRiskyPlayer(0.7));
         opponentModelFullList.add(VanDenBerghFactory.buildAgent());
-        opponentModelFullList.add(new EvalFnAgent("RESPlayers_5.params", 0.0, true));
-        opponentModelFullList.add(new EvalFnAgent("RESPlayers_5.params", 0.0, false));
+        opponentModelFullList.add(new EvalFnAgent("RESPlayers_5.params", 0.0, MCTSRuleInfoSet.initialiseRules("1|2|3|4|6|7|8|9|10|11|12|15"),true));
+        opponentModelFullList.add(new EvalFnAgent("RESPlayers_5.params", 0.0, MCTSRuleInfoSet.initialiseRules("1|2|3|4|6|7|8|9|10|11|12|15"), false));
         opponentModelFullList.add(IGGIFactory.buildIGGI2Player());
         opponentModelFullList.add(OsawaFactory.buildOuterState());
     }
 
     @AgentConstructor("mctsOpponentModel")
-    public MCTSOppModelRollout(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String modelLocation) {
+    public MCTSOppModelRollout(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String modelLocation, String rules) {
 //        this.roundLength = roundLength;
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rules, null);
         expansionPolicy = new RuleExpansionPolicyOpponentModel(logger, random, allRules);
         try {
             if (modelLocation.startsWith("RES")) {
@@ -332,16 +332,6 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         // this then sets the most lilely type to have log-likelihood of 0 (likelihood of 1.0), with others scaled appropriately
     }
 
-    private List<Rule> getRulesThatTriggered(Action action, GameState fromState, int agentID) {
-        return MCTSRuleInfoSet.allRules.stream()
-                .filter(r -> {
-                    Action a = r.execute(agentID, fromState);
-                    if (a == null) return false;
-                    return (a.equals(action));
-                })
-                .collect(Collectors.toList());
-    }
-
     private Action getActionFromEvent(GameEvent event) {
         try {
             if (event instanceof CardPlayed) {
@@ -370,7 +360,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
     protected double[] featureData(GameEvent event, GameState state, int playerID) {
         Map<String, Double> features = StateGatherer.extractFeatures(state, playerID, true);
         Map<String, Double> featuresBase = StateGatherer.extractFeatures(state, playerID, false);
-        List<Rule> rulesTriggered = getRulesThatTriggered(getActionFromEvent(event), state, playerID);
+        List<Rule> rulesTriggered = GameRunnerWithRandomAgents.getRulesThatTriggered(getActionFromEvent(event), state, playerID);
 
         for (Rule r : rulesTriggered) {
             features.put(r.getClass().getSimpleName(), 1.00);

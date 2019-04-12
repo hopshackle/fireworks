@@ -3,41 +3,25 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.evalfn.EvalFnAgent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.*;
+import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 
+import java.util.List;
 import java.util.Optional;
 
 public class CRIS_MCTSRule extends CRIS_MCTS {
 
-    public CRIS_MCTSRule() {
-        this(MCTSNode.DEFAULT_EXP_CONST, DEFAULT_ROLLOUT_DEPTH, DEFAULT_TREE_DEPTH_MUL, DEFAULT_TIME_LIMIT);
-    }
-
-    public CRIS_MCTSRule(double expConst) {
-        this(expConst, DEFAULT_ROLLOUT_DEPTH, DEFAULT_TREE_DEPTH_MUL, DEFAULT_TIME_LIMIT);
-    }
-
-    /**
-     * Create an MCTS agent which has the parameters.
-     *
-     * @param explorationC
-     * @param rolloutDepth
-     * @param treeDepthMul
-     * @param timeLimit    in ms
-     */
-    public CRIS_MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
-//        this.roundLength = roundLength;
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        expansionPolicy = new RuleExpansionPolicy(logger, random, MCTSRuleInfoSet.allRules);
-    }
+    protected List<Rule> allRules;
 
     @AgentConstructor("hs-CRISRule")
-    public CRIS_MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
-        this(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        rolloutPolicy = rollout == null ? new RandomEqual(0) : rollout;
+    public CRIS_MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String rules, Agent rollout) {
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rollout);
+        allRules = MCTSRuleInfoSet.initialiseRules(rules);
         // TODO: Parameterise this more elegantly in future
         if (rollout instanceof EvalFnAgent)
-            expansionPolicy = new RuleFullExpansion(logger, random, MCTSRuleInfoSet.allRules, Optional.empty(), Optional.of((EvalFnAgent) rollout));
+            expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.of((EvalFnAgent) rollout));
+        else
+            expansionPolicy = new RuleExpansionPolicy(logger, random, allRules);
     }
 
 

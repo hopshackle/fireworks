@@ -10,6 +10,7 @@ public class MonteCarloNN implements Agent {
 
     static EvalFnAgent[] valueAgent = new EvalFnAgent[5];
     static boolean initialised = false;
+    static String rulesToUse ="1|2|3|4|6|7|8|9|10|11|12|15";
 
     static MCTSRuleInfoSetFullExpansion[] actualBrains = new MCTSRuleInfoSetFullExpansion[5];
 
@@ -20,7 +21,7 @@ public class MonteCarloNN implements Agent {
                     ClassLoader classLoader = getClass().getClassLoader();
                     HopshackleNN brain = HopshackleNN.createFromStream(classLoader.getResourceAsStream("Players_" + players + ".params"));
                     valueAgent[players - 1] = new EvalFnAgent(brain, 0.0, true);
-                    actualBrains[players - 1] = new MCTSRuleInfoSetFullExpansion(0.03, 100, 3, 30, valueAgent[players - 1]);
+                    actualBrains[players - 1] = new MCTSRuleInfoSetFullExpansion(0.03, 100, 3, 30, rulesToUse, valueAgent[players - 1]);
                 }
             } catch (Exception e) {
                 System.out.println("Error when reading in Model " + e.toString());

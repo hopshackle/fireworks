@@ -16,7 +16,7 @@ public class StateGathererWithTargetFullTree extends StateGathererFullTree {
     public static List<String> allTargets = new ArrayList();
 
     static {
-        for (Rule r : MCTSRuleInfoSet.allRules) {
+        for (Rule r : MCTSRuleInfoSet.masterRuleMap.values()) {
             allTargets.add(r.getClass().getSimpleName());
         }
     }

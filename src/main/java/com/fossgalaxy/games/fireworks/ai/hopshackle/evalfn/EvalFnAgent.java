@@ -25,12 +25,14 @@ public class EvalFnAgent implements Agent {
     private boolean debug = false;
     private Random rand = new Random(47);
     private boolean useConventions;
+    private List<Rule> rules;
 
     @AgentConstructor("evalFn")
-    public EvalFnAgent(String modelLocation, double temp, boolean conventions) {
+    public EvalFnAgent(String modelLocation, double temp, List<Rule> rules, boolean conventions) {
         //Load the model
         temperature = temp;
         useConventions = conventions;
+        this.rules = rules;
     //    debug = logger.isDebugEnabled();
         try {
             if (modelLocation.startsWith("RES")) {
@@ -103,7 +105,6 @@ public class EvalFnAgent implements Agent {
     }
 
     private List<Action> getPossibleActions(int agentID, GameState state) {
-        List<Rule> rules = useConventions ? MCTSRuleInfoSet.allRules : MCTSRuleInfoSet.allRulesWithoutConventions;
         List<Action> retValue = rules.stream()
                 .filter(r -> r.canFire(agentID, state))
                 .map(r -> r.execute(agentID, state))

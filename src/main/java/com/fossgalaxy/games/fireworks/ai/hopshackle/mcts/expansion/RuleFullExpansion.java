@@ -1,6 +1,5 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion;
 
-import com.fossgalaxy.games.fireworks.ai.hopshackle.evalfn.ClassifierFnAgent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.evalfn.EvalFnAgent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSNode;
 import com.fossgalaxy.games.fireworks.ai.rule.Rule;
@@ -12,12 +11,10 @@ import java.util.*;
 
 public class RuleFullExpansion extends RuleExpansionPolicy {
 
-    protected Optional<ClassifierFnAgent> QAgent;
     protected Optional<EvalFnAgent> VAgent;
 
-    public RuleFullExpansion(Logger logger, Random random, List<Rule> allRules, Optional<ClassifierFnAgent> qAgent, Optional<EvalFnAgent> vAgent) {
+    public RuleFullExpansion(Logger logger, Random random, List<Rule> allRules, Optional<EvalFnAgent> vAgent) {
         super(logger, random, allRules);
-        QAgent = qAgent;
         VAgent = vAgent;
     }
 
@@ -35,26 +32,7 @@ public class RuleFullExpansion extends RuleExpansionPolicy {
         // we then assume that the best move is worth a point, and pro rata the rest
 
         int nextAgentID = (parent.getAgentId() + 1) % state.getPlayerCount();
-        Map<Action, Double> actionValues = new HashMap<>();
-        if (QAgent.isPresent()) {
-            actionValues = QAgent.get().getAllActionValues(nextAgentID, state);
-            double stateValue = VAgent.isPresent()
-                    ? VAgent.get().valueState(state, Optional.empty(), nextAgentID)
-                    : state.getScore() / 25.0;
-            double largestValue = Double.NEGATIVE_INFINITY;
-            for (Action a : actionValues.keySet()) {
-                double value = actionValues.get(a);
-                if (value > largestValue) {
-                    largestValue = value;
-                }
-            }
-            for (Action a : actionValues.keySet()) {
-                double value = actionValues.get(a);
-                actionValues.put(a, stateValue + (1.0 - value / largestValue) / 25.0);
-            }
-        } else {
-            actionValues = VAgent.get().getAllActionValues(nextAgentID, state);
-        }
+        Map<Action, Double> actionValues = VAgent.get().getAllActionValues(nextAgentID, state);
 
         for (Action a : actionValues.keySet()) {
             if (!parent.containsChild(a)) {

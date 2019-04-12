@@ -10,8 +10,7 @@ import java.util.stream.Collectors;
 
 public class ConventionUtils {
 
-    public static boolean singleTouchOnNextPlayer = false;
-    public static boolean singleTouchOnPreviousPlayer = false;
+    public static boolean singleTouchOnNextPlayer = true;
 
     public static boolean isAConventionalTell(Action proposedTell, GameState state, int playerID) {
         int affected = 0;
@@ -35,27 +34,6 @@ public class ConventionUtils {
                 }
             }
         }
-        if (affected != 1 && singleTouchOnPreviousPlayer) {
-            int previousPlayer = (playerID - 1 + state.getPlayerCount()) % state.getPlayerCount();
-            if (proposedTell instanceof TellValue) {
-                TellValue tell = (TellValue) proposedTell;
-                if (tell.player == previousPlayer) {
-                    Hand hand = state.getHand(tell.player);
-                    for (int slot = 0; slot < hand.getSize(); slot++) {
-                        if (hand.hasCard(slot) && hand.getCard(slot).value == tell.value) affected++;
-                    }
-                }
-            } else if (proposedTell instanceof TellColour) {
-                TellColour tell = (TellColour) proposedTell;
-                if (tell.player == previousPlayer) {
-                    Hand hand = state.getHand(tell.player);
-                    for (int slot = 0; slot < hand.getSize(); slot++) {
-                        if (hand.hasCard(slot) && hand.getCard(slot).colour == tell.colour) affected++;
-                    }
-                }
-            }
-        }
-//        System.out.println(String.format("%d\t%s\t%s", playerID, proposedTell, affected == 1));
         return affected == 1;
     }
 
@@ -74,15 +52,19 @@ public class ConventionUtils {
 
     public static Map<Integer, List<Card>> bindBlindCardWithConventions(int player, Hand hand, List<Card> deck, GameState state) {
         Map<Integer, List<Card>> retValue = DeckUtils.bindBlindCard(player, hand, deck);
-        // we start with the DeckUtils result, which uses the legal information
+        // we start with the DeckUtils result, which uses the grounded information
 
         if (singleTouchOnNextPlayer) {
-            List<Integer> slotsDrawn = new ArrayList<>();
+            Set<Integer> slotsDrawn = new HashSet<>();
+            Map<CardColour, Integer> scoresAtPointOfTell = new HashMap<>();
+            for (CardColour colour : CardColour.values()) {
+                scoresAtPointOfTell.put(colour, state.getTableValue(colour));
+            }
+            // this tracks any slots that have been drawn since the Tell was received, and hence for which we have no information
             Iterator<GameEvent> iter = state.getHistory().descendingIterator();
-            boolean stillLooking = true;
-            while (iter.hasNext() && stillLooking) {
+            int count = 0;
+            while (iter.hasNext() && count < state.getPlayerCount() * 3) {
                 GameEvent lastEvent = iter.next();
-                //          stillLooking = false;
                 if (lastEvent instanceof CardInfo) {
                     CardInfo event = (CardInfo) lastEvent;
                     int previousPlayer = (player - 1 + state.getPlayerCount()) % state.getPlayerCount();
@@ -95,7 +77,7 @@ public class ConventionUtils {
                             }
                             List<Card> startingPoint = retValue.get(slot);
                             List<Card> filtered = startingPoint.stream().
-                                    filter(c -> state.getTableValue(c.colour) + 1 == c.value).collect(Collectors.toList());
+                                    filter(c -> scoresAtPointOfTell.get(c.colour) + 1 == c.value).collect(Collectors.toList());
                             if (!filtered.isEmpty()) {
                                 retValue.put(slot, filtered);
                             } else {
@@ -103,64 +85,25 @@ public class ConventionUtils {
                             }
                         }
                     }
-                    // for the moment we only look at the last event, as if this was a TELL, then there will have been no Discarding or Drawing cards
                 } else if (lastEvent instanceof CardDiscarded) {
                     CardDiscarded cd = (CardDiscarded) lastEvent;
-                    String s = cd.toString();
-                    int discardPlayer = Integer.valueOf(s.substring(7, 8));
-                    if (player == discardPlayer) {
-                        int slot = Integer.valueOf(s.substring(24, 25));
-                        slotsDrawn.add(slot);
+                    if (player == cd.getPlayerId()) {
+                        slotsDrawn.add(cd.getSlotId());
                         // record that data for this slot is now irrelevant
                     }
                 } else if (lastEvent instanceof CardPlayed) {
-                    stillLooking = false;
+                    //             stillLooking = false;
                     // we could track which score was affected, but we would have to use the toString() representation to
                     // extract this information, as it is not publicly available in the interface!
                     // so instead, we stop our backward search at a CardPlay event
+                    CardPlayed cp = (CardPlayed) lastEvent;
+                    scoresAtPointOfTell.put(cp.getColour(), cp.getValue()); // decrement score
+                    if (player == cp.getPlayerId())
+                        slotsDrawn.add(cp.getSlotId());
                 }
             }
         }
 
-        if (singleTouchOnPreviousPlayer) {
-            List<Integer> slotsDrawn = new ArrayList<>();
-            Iterator<GameEvent> iter = state.getHistory().descendingIterator();
-            boolean stillLooking = true;
-            while (iter.hasNext() && stillLooking) {
-                GameEvent lastEvent = iter.next();
-                if (lastEvent instanceof CardInfo) {
-                    CardInfo event = (CardInfo) lastEvent;
-                    int nextPlayer = (player + 1) % state.getPlayerCount();
-                    if (event.getSlots().length == 1 && event.wasToldTo(player) && event.wasToldBy(nextPlayer)) {
-                        // bingo! Only discardable cards permitted
-
-                        for (int slot : event.getSlots()) {
-                            if (slotsDrawn.contains(slot)) continue;
-                            List<Card> startingPoint = retValue.get(slot);
-                            // we don;t look at edge-cases of discardability here; just that the table has gone beyond that point in the suit
-                            List<Card> filtered = startingPoint.stream().
-                                    filter(c -> state.getTableValue(c.colour) >= c.value).collect(Collectors.toList());
-                            if (!filtered.isEmpty()) {
-                                retValue.put(slot, filtered);
-                            } else {
-                                //                             System.out.println("No possible cards left!");
-                            }
-                        }
-                    }
-                    // for the moment we only look at the last event, as if this was a TELL, then there will have been no Discarding or Drawing cards
-                } else if (lastEvent instanceof CardDiscarded) {
-                    CardDiscarded cd = (CardDiscarded) lastEvent;
-                    String s = cd.toString();
-                    int discardPlayer = Integer.valueOf(s.substring(7, 8));
-                    if (player == discardPlayer) {
-                        int slot = Integer.valueOf(s.substring(24, 25));
-                        slotsDrawn.add(slot);
-                        if (slotsDrawn.size() >= state.getHandSize()) stillLooking = false;
-                        // record that data for this slot is now irrelevant
-                    }
-                }
-            }
-        }
         return retValue;
     }
 }

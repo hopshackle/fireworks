@@ -15,7 +15,7 @@ public class StateGathererWithTarget extends StateGatherer {
     public static List<String> allTargets = new ArrayList();
 
     static {
-        for (Rule r : MCTSRuleInfoSet.allRules) {
+        for (Rule r : MCTSRuleInfoSet.masterRuleMap.values()) {
             allTargets.add(r.getClass().getSimpleName());
         }
         allTargets.add("PLAY_CARD");
