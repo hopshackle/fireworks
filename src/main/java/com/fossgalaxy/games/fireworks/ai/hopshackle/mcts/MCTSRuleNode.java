@@ -1,5 +1,6 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.LegalActionFilter;
 import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.*;
@@ -13,26 +14,6 @@ import java.util.stream.*;
 public class MCTSRuleNode extends MCTSNode {
 
     protected final List<Rule> allRules;
-
-    public MCTSRuleNode(List<Rule> possibleRules) {
-        this(null, -1, null, DEFAULT_EXP_CONST, possibleRules);
-    }
-
-    public MCTSRuleNode(double expConst, List<Rule> possibleRules) {
-        this(null, -1, null, expConst, possibleRules);
-    }
-
-    public MCTSRuleNode(int agentID, Action moveToState, List<Rule> possibleRules) {
-        this(null, agentID, moveToState, DEFAULT_EXP_CONST, possibleRules);
-    }
-
-    public MCTSRuleNode(int agentID, Action moveToState, double expConst, List<Rule> possibleRules) {
-        this(null, agentID, moveToState, expConst, possibleRules);
-    }
-
-    public MCTSRuleNode(MCTSRuleNode parent, int agentId, Action moveToState, List<Rule> possibleRules) {
-        this(parent, agentId, moveToState, DEFAULT_EXP_CONST, possibleRules);
-    }
 
     public MCTSRuleNode(MCTSRuleNode parent, int agentId, Action moveToState, double expConst, List<Rule> possibleRules) {
         super(parent, agentId, moveToState, expConst, new ArrayList<>());
@@ -94,21 +75,8 @@ public class MCTSRuleNode extends MCTSNode {
         List<Action> retValue = allRules.stream()
                 .map(r -> r.execute(nextID, state))
                 .filter(Objects::nonNull)
-                .filter(p -> {
-                    // this section should use Action.isLegal(). But that is broken for Play and Discard
-                    // as it uses hand.getCard() != null, which will always be true for the acting player
-                    // when we use the state provided by GameRunner
-                    if (p instanceof PlayCard) {
-                        int slot = ((PlayCard) p).slot;
-                        return state.getHand(nextID).hasCard(slot);
-                    } else if (p instanceof DiscardCard) {
-                        int slot = ((DiscardCard) p).slot;
-                        return state.getHand(nextID).hasCard(slot) && state.getInfomation() != state.getStartingInfomation();
-                    } else {
-                        return state.getInfomation() != 0;
-                    }
-                })
                 .distinct()
+                .filter(LegalActionFilter.isLegal(nextID, state))
                 .collect(Collectors.toList());
 
         return retValue;

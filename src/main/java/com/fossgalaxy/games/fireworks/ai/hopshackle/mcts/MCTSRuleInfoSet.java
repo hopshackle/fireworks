@@ -38,7 +38,7 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
         masterRuleMap.put(13, new DiscardProbablyUselessCard(0.0));
         masterRuleMap.put(14, new PlayBestCardIfTwoPlayerAndCannotDiscard());
         masterRuleMap.put(15, new TellNotDiscardable(true));
-
+// 1|2|3|4|6|7|8|9|10|11|12|15
         /*
         allRulesWithoutConventions.add(new TellMostInformation(true, false));
         allRulesWithoutConventions.add(new TellAnyoneAboutUsefulCard(false));

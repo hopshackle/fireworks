@@ -38,31 +38,8 @@ public class MCTS implements Agent, HasGameOverProcessing {
     protected ExpansionPolicy expansionPolicy;
     protected Agent rolloutPolicy;
 
-    /**
-     * Create a default MCTS implementation.
-     * <p>
-     * This creates an MCTS agent that has a default roll-out length of 50_000 iterations, a depth of 18 and a tree
-     * multiplier of 1.
-     */
-    public MCTS() {
-        this(MCTSNode.DEFAULT_EXP_CONST, DEFAULT_ROLLOUT_DEPTH, DEFAULT_TREE_DEPTH_MUL, DEFAULT_TIME_LIMIT);
-    }
-
-    public MCTS(double expConst) {
-        this(expConst, DEFAULT_ROLLOUT_DEPTH, DEFAULT_TREE_DEPTH_MUL, DEFAULT_TIME_LIMIT);
-    }
-
-    /**
-     * Create an MCTS agent which has the parameters.
-     *
-     * @param explorationC
-     * @param rolloutDepth
-     * @param treeDepthMul
-     * @param timeLimit    in ms
-     */
 
     public MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
-//        this.roundLength = roundLength;
         this.rolloutDepth = rolloutDepth;
         this.treeDepthMul = treeDepthMul;
         this.timeLimit = timeLimit;
@@ -237,7 +214,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
             int agent = current.getAgentId();
 
             Action action = current.getAction();
-            logger.trace("Selected action " + action + " for player " + agent);
+            if (logger.isTraceEnabled()) logger.trace("Selected action " + action + " for player " + agent);
             if (action != null) {
                 state.tick();
                 List<GameEvent> events = action.apply(agent, state);
