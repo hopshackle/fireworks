@@ -10,11 +10,9 @@ import java.util.stream.Collectors;
 
 public class ConventionUtils {
 
-    public static boolean singleTouchOnNextPlayer = true;
-
-    public static boolean isAConventionalTell(Action proposedTell, GameState state, int playerID) {
+    public static boolean isAConventionalTell(Action proposedTell, GameState state, int playerID, Conventions conv) {
         int affected = 0;
-        if (singleTouchOnNextPlayer) {
+        if (conv.singleTouchIsPlayable) {
             int nextPlayer = (playerID + 1) % state.getPlayerCount();
             if (proposedTell instanceof TellValue) {
                 TellValue tell = (TellValue) proposedTell;
@@ -50,11 +48,10 @@ public class ConventionUtils {
     }
 
 
-    public static Map<Integer, List<Card>> bindBlindCardWithConventions(int player, Hand hand, List<Card> deck, GameState state) {
+    public static Map<Integer, List<Card>> bindBlindCardWithConventions(int player, Hand hand, List<Card> deck, GameState state, Conventions conv) {
         Map<Integer, List<Card>> retValue = DeckUtils.bindBlindCard(player, hand, deck);
         // we start with the DeckUtils result, which uses the grounded information
-
-        if (singleTouchOnNextPlayer) {
+        if (conv.singleTouchIsPlayable) {
             Set<Integer> slotsDrawn = new HashSet<>();
             Map<CardColour, Integer> scoresAtPointOfTell = new HashMap<>();
             for (CardColour colour : CardColour.values()) {

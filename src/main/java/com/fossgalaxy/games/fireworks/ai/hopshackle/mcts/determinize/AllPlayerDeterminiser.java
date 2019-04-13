@@ -1,6 +1,7 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize;
 
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.ConventionUtils;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.Conventions;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.*;
@@ -18,6 +19,7 @@ public class AllPlayerDeterminiser {
     protected MCTSNode parentNode, triggerNode;
     protected int root;
     private static Logger logger = LoggerFactory.getLogger(AllPlayerDeterminiser.class);
+    private Conventions conv;
 
     public AllPlayerDeterminiser(AllPlayerDeterminiser apd) {
         root = apd.root;
@@ -26,12 +28,13 @@ public class AllPlayerDeterminiser {
             determinisationsByPlayer[i] = apd.determinisationsByPlayer[i].getCopy();
             parentNode = apd.parentNode;
         }
+        conv = apd.conv;
     }
 
-    public AllPlayerDeterminiser(GameState stateToCopy, int rootPlayerID) {
+    public AllPlayerDeterminiser(GameState stateToCopy, int rootPlayerID, String conventionString) {
         root = rootPlayerID;
         determinisationsByPlayer = new GameState[stateToCopy.getPlayerCount()];
-
+        conv = new Conventions(conventionString);
         // we then do our one-off determinisation of the root player's cards
         // this is because these cards are the ones visible to the other players, so will be constant for the
         // remaining determinisations
@@ -59,7 +62,7 @@ public class AllPlayerDeterminiser {
         }
 
         // we then bind new cards
-        bindNewCards(player, state);
+        bindNewCards(player, state, conv);
         deck.shuffle();
 
         int totalCards = state.getScore() + deck.getCardsLeft() + state.getDiscards().size();
@@ -87,7 +90,7 @@ public class AllPlayerDeterminiser {
     /*
     Cards in previous hand have already been added back into deck before this method is called
      */
-    public static void bindNewCards(int agentID, GameState state) {
+    public static void bindNewCards(int agentID, GameState state, Conventions conv) {
         Hand myHand = state.getHand(agentID);
         Deck deck = state.getDeck();
         List<Card> toChooseFrom = state.getDeck().toList();
@@ -95,7 +98,7 @@ public class AllPlayerDeterminiser {
         if (toChooseFrom.isEmpty()) {
             throw new AssertionError("no cards ");
         } else {
-            Map<Integer, List<Card>> possibleCardsFinal = ConventionUtils.bindBlindCardWithConventions(agentID, state.getHand(agentID), toChooseFrom, state);
+            Map<Integer, List<Card>> possibleCardsFinal = ConventionUtils.bindBlindCardWithConventions(agentID, state.getHand(agentID), toChooseFrom, state, conv);
             List<Integer> bindOrder = DeckUtils.bindOrder(possibleCardsFinal);
             bindOrder = bindOrder.stream().filter(slot -> !possibleCardsFinal.get(slot).isEmpty()).collect(Collectors.toList());
             Map<Integer, List<Card>> possibleCards = possibleCardsFinal;

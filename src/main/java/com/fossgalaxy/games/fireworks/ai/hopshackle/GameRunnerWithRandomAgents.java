@@ -2,6 +2,7 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSRuleInfoSet;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.RuleGenerator;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGatherer;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGathererWithTarget;
 import com.fossgalaxy.games.fireworks.ai.rule.Rule;
@@ -24,9 +25,6 @@ import java.util.stream.IntStream;
  */
 public class GameRunnerWithRandomAgents extends GameRunner {
 
-    Random rnd = new Random();
-    int[] agentIndicesByPlayer;
-
     public static String[] agentDescriptors = new String[]{
             "clivej2",
             "legal_random",
@@ -42,6 +40,10 @@ public class GameRunnerWithRandomAgents extends GameRunner {
     };
 
     protected Agent[] agents = new Agent[agentDescriptors.length];
+    private Random rnd = new Random();
+    private int[] agentIndicesByPlayer;
+    private List<Rule> rulesToTrack;
+    private StateGathererWithTarget stateGatherer;
 
     /**
      * Create a game runner with a given ID and number of players.
@@ -49,11 +51,13 @@ public class GameRunnerWithRandomAgents extends GameRunner {
      * @param gameID          the ID of the game
      * @param expectedPlayers the number of players we expect to be playing.
      */
-    public GameRunnerWithRandomAgents(String gameID, int expectedPlayers) {
+    public GameRunnerWithRandomAgents(String gameID, int expectedPlayers, String rules, String conventions) {
         this(gameID, new BasicState(HAND_SIZE[expectedPlayers], expectedPlayers));
+        rulesToTrack = RuleGenerator.generateRules(rules, conventions);
+        stateGatherer = new StateGathererWithTarget(rules, conventions);
     }
 
-    public GameRunnerWithRandomAgents(String gameID, GameState state) {
+    private GameRunnerWithRandomAgents(String gameID, GameState state) {
         super(gameID, state);
         for (int i = 0; i < agentDescriptors.length; i++) {
             agents[i] = AgentUtils.buildAgent(agentDescriptors[i]);
@@ -105,9 +109,8 @@ public class GameRunnerWithRandomAgents extends GameRunner {
 
         // store this as a datapoint
         GameState playerState = ((HopshackleAgentPlayer) player).getGameState();
-        Map<String, Double> features = StateGatherer.extractFeatures(playerState, nextPlayer, true);
-        Map<String, Double> featuresBase = StateGatherer.extractFeatures(playerState, nextPlayer, false);
-        List<Rule> rulesTriggered = getRulesThatTriggered(action, playerState, nextPlayer);
+        Map<String, Double> features = stateGatherer.extractFeatures(playerState, nextPlayer);
+        List<Rule> rulesTriggered = getRulesThatTriggered(rulesToTrack, action, playerState, nextPlayer);
 
         for (Rule r : rulesTriggered) {
             features.put(r.getClass().getSimpleName(), 1.00);
@@ -117,7 +120,7 @@ public class GameRunnerWithRandomAgents extends GameRunner {
 
         try {
             FileWriter writerCSV = new FileWriter("hanabi/OpponentData.csv", true);
-            String csvLine = asCSVLineWithTargets(features, featuresBase, agentIndicesByPlayer[nextPlayer]);
+            String csvLine = asCSVLineWithTargets(features, features, agentIndicesByPlayer[nextPlayer]);
             writerCSV.write(csvLine + "\n");
             writerCSV.close();
         } catch (Exception e) {
@@ -134,8 +137,8 @@ public class GameRunnerWithRandomAgents extends GameRunner {
         nextPlayer = (nextPlayer + 1) % players.length;
     }
 
-    public static List<Rule> getRulesThatTriggered(Action action, GameState fromState, int agentID) {
-        return MCTSRuleInfoSet.masterRuleMap.values().stream()
+    public static List<Rule> getRulesThatTriggered(List<Rule> allRules, Action action, GameState fromState, int agentID) {
+        return allRules.stream()
                 .filter(r -> {
                     Action a = r.execute(agentID, fromState);
                     if (a == null) return false;
@@ -158,7 +161,7 @@ public class GameRunnerWithRandomAgents extends GameRunner {
 
     protected String asCSVLineWithTargets(Map<String, Double> tuple, Map<String, Double> tuple2, int agentType) {
         String featureString = asCSVLine(tuple, tuple2);
-        String ruleString = StateGathererWithTarget.allTargets.stream()
+        String ruleString = stateGatherer.allTargets.stream()
                 .map(k -> tuple.getOrDefault(k, 0.0))
                 .map(d -> String.format("%.3f", d))
                 .collect(Collectors.joining("\t"));

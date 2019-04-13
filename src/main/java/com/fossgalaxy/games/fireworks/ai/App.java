@@ -26,6 +26,8 @@ public class App
 {
 
     private static DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("HH:mm:ss 'on' dd-LLL");
+    private static String stateGatherRules = "1|2|3|4|6|7|8|9|10|11|12|15";
+    private static String stateGatherConventions = "Y";
     public static void main( String[] args )
     {
         String policy = (args.length < 1) ? "outer" : args[0];
@@ -64,7 +66,7 @@ public class App
                         case "MC":
                             // Extracts state features only. Target is Monte Carlo score from full game.
                             // Hence this values (s).
-                            StateGathererMonteCarlo sgcm = new StateGathererMonteCarlo();
+                            StateGathererMonteCarlo sgcm = new StateGathererMonteCarlo(stateGatherRules, stateGatherConventions);
                             policy.setStateGatherer(sgcm);
                             policy.setEndGameProcessor(sgcm);
                             break;
@@ -72,26 +74,29 @@ public class App
                             // Uses allRules to determine which ones are triggered. Spreads a total pmf of 1.0
                             // evenly across all triggered rules. State features only.
                             // Hence this provides a score for each rule in an action-classifier.
-                            StateGathererWithTargetFullTree sgwt = new StateGathererWithTargetFullTree(threshold, 12);
+                            StateGathererWithTargetFullTree sgwt = new StateGathererWithTargetFullTree(stateGatherRules,
+                                    stateGatherConventions, threshold, 12);
                             policy.setStateGatherer(sgwt);
                             break;
                         case "rollForwardClassifier":
                             // Uses State and Action features. Target is set to be 2 x probability that the
                             // action is at least as good as the best recorded action.
                             // Hence this is an action classifier, not a state valuer.
-                            StateGathererActionClassifierFullTree sgac = new StateGathererActionClassifierFullTree(threshold, 12);
+                            StateGathererActionClassifierFullTree sgac = new StateGathererActionClassifierFullTree(stateGatherRules,
+                                    stateGatherConventions, threshold, 12);
                             policy.setStateGatherer(sgac);
                             break;
                         case "treeRFC":
                             // Processes the whole tree, for all nodes with at least the threshold visits
                             // State and Action features used. The target is the value of the child node. So
                             // this values (s, a)
-                            StateGathererFullTree sgft = new StateGathererFullTree(threshold, 12);
+                            StateGathererFullTree sgft = new StateGathererFullTree(stateGatherRules,
+                                    stateGatherConventions, threshold, 12);
                             policy.setStateGatherer(sgft);
                             break;
                         case "treeRootOnly":
                             // As TreeRFC, but only ever processes the root node
-                            sgft = new StateGathererFullTree(threshold, 0);
+                            sgft = new StateGathererFullTree(stateGatherRules, stateGatherConventions, threshold, 0);
                             policy.setStateGatherer(sgft);
                             break;
                         default:

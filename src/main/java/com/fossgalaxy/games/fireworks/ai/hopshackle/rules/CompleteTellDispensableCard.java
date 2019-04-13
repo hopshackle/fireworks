@@ -10,13 +10,18 @@ import com.fossgalaxy.games.fireworks.state.actions.TellValue;
 
 /**
  * Created by piers on 25/04/17.
- *
+ * <p>
  * Tells useful card prioritising the first instance that we can
  * finish telling something, otherwise first instance that we can
  * tell something
  */
 public class CompleteTellDispensableCard extends AbstractTellRule {
 
+    private Conventions conv;
+
+    public CompleteTellDispensableCard(Conventions conventions) {
+        conv = conventions;
+    }
 
     @Override
     public Action execute(int playerID, GameState state) {
@@ -44,11 +49,17 @@ public class CompleteTellDispensableCard extends AbstractTellRule {
                 }
 
                 // Can we uniquely identify the card?
-                if(hand.getKnownValue(slot) == null ^ hand.getKnownColour(slot) == null){
+                if (hand.getKnownValue(slot) == null ^ hand.getKnownColour(slot) == null) {
                     if (hand.getKnownValue(slot) == null) {
-                        return new TellValue(nextPlayer, card.value);
-                    } else if (hand.getKnownColour(slot) == null) {
-                        return new TellColour(nextPlayer, card.colour);
+                        Action proposal = new TellValue(nextPlayer, card.value);
+                        if (!ConventionUtils.isAConventionalTell(proposal, state, nextPlayer, conv))
+                            return proposal;
+                    }
+
+                    if (hand.getKnownColour(slot) == null) {
+                        Action proposal = new TellColour(nextPlayer, card.colour);
+                        if (!ConventionUtils.isAConventionalTell(proposal, state, nextPlayer, conv))
+                            return proposal;
                     }
                 }
 

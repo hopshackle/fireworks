@@ -15,6 +15,11 @@ import java.util.Map;
  */
 public class PlayBestCardIfTwoPlayerAndCannotDiscard extends AbstractRule {
 
+    private Conventions conv;
+
+    public PlayBestCardIfTwoPlayerAndCannotDiscard(Conventions conventions) {
+        conv = conventions;
+    }
 
     @Override
     public boolean canFire(int playerID, GameState state) {
@@ -24,7 +29,7 @@ public class PlayBestCardIfTwoPlayerAndCannotDiscard extends AbstractRule {
     public Action execute(int playerID, GameState state) {
         if (state.getPlayerCount() != 2 || state.getStartingInfomation() != state.getInfomation()) return null;
 
-        Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(playerID, state.getHand(playerID), state.getDeck().toList(), state);
+        Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(playerID, state.getHand(playerID), state.getDeck().toList(), state, conv);
 
         double bestSoFar = 0.0;
         int bestSlot = -1;

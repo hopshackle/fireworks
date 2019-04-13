@@ -2,6 +2,7 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.HandDeterminiser;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.Conventions;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsCollator;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.*;
@@ -18,39 +19,12 @@ public class MCTSInfoSet extends MCTS {
 
     protected HandDeterminiser handDeterminiser;
     protected boolean MRIS = false;
-
-    /**
-     * Create a default MCTS implementation.
-     * <p>
-     * This creates an MCTS agent that has a default roll-out length of 50_000 iterations, a depth of 18 and a tree
-     * multiplier of 1.
-     */
-    public MCTSInfoSet() {
-        this(MCTSNode.DEFAULT_EXP_CONST, DEFAULT_ROLLOUT_DEPTH, DEFAULT_TREE_DEPTH_MUL, DEFAULT_TIME_LIMIT);
-    }
-
-    public MCTSInfoSet(double expConst) {
-        this(expConst, DEFAULT_ROLLOUT_DEPTH, DEFAULT_TREE_DEPTH_MUL, DEFAULT_TIME_LIMIT);
-    }
-
-    /**
-     * Create an MCTS agent which has the parameters.
-     *
-     * @param explorationC
-     * @param rolloutDepth
-     * @param treeDepthMul
-     * @param timeLimit    in ms
-     */
-
-    public MCTSInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
-//        this.roundLength = roundLength;
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-    }
+    protected Conventions conv;
 
     @AgentConstructor("hs-RIS")
-    public MCTSInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        rolloutPolicy = rollout == null ? new RandomEqual(0) : rollout;
+    public MCTSInfoSet(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String conventions, Agent rollout) {
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rollout);
+        conv = new Conventions(conventions);
     }
 
     @Override
@@ -63,7 +37,7 @@ public class MCTSInfoSet extends MCTS {
             rollouts++;
             GameState currentState = state.getCopy();
 
-            handDeterminiser = new HandDeterminiser(currentState, agentID, MRIS);
+            handDeterminiser = new HandDeterminiser(currentState, agentID, MRIS, conv);
             long oldShiftsPlay = HandDeterminiser.getUniverseShiftPlay();
             long oldShiftsDiscard = HandDeterminiser.getUniverseShiftDiscard();
             MCTSNode current = select(root, currentState, movesLeft);

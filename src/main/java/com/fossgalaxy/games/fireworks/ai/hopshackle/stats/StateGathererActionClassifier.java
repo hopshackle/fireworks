@@ -11,6 +11,10 @@ public class StateGathererActionClassifier extends StateGatherer {
 
     private NormalDistribution Z = new NormalDistribution();
 
+    public StateGathererActionClassifier(String rules, String conventions) {
+        super(rules, conventions);
+    }
+
     @Override
     public void storeData(MCTSNode node, GameState gameState, int playerID) {
         double bestScore = node.getBestNode().rolloutScores.getMean();
@@ -32,7 +36,7 @@ public class StateGathererActionClassifier extends StateGatherer {
                 if (Double.isNaN(score)) {
                     throw new AssertionError("Not a Number in calculation");
                 }
-                Map<String, Double> features = extractFeaturesWithRollForward(gameState, child.getAction(), playerID, true);
+                Map<String, Double> features = extractFeaturesWithRollForward(gameState, child.getAction(), playerID);
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("Action %s has value %.3f\n", child.getAction(), score));
                     logger.debug(asCSVLine(features));

@@ -21,10 +21,15 @@ import java.util.Map;
 public class DiscardLeastLikelyToBeNecessary extends AbstractDiscardRule {
 
     private static int[] cardCopies = new int[]{-1, 3, 2, 2, 2, 1};
+    private Conventions conv;
+
+    public DiscardLeastLikelyToBeNecessary(Conventions conventions) {
+        conv = conventions;
+    }
 
     @Override
     public Action execute(int playerID, GameState state) {
-        Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(playerID, state.getHand(playerID), state.getDeck().toList(), state);
+        Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(playerID, state.getHand(playerID), state.getDeck().toList(), state, conv);
 
         double bestSoFar = 1.0;
         int bestSlot = -1;

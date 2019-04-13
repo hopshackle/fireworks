@@ -3,6 +3,7 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.LegalActionFilter;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.RuleGenerator;
 import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.GameState;
@@ -17,7 +18,7 @@ public class RandomRule implements Agent {
 
     @AgentConstructor("hs-randomRule")
     public RandomRule(String rules) {
-        allRules = MCTSRuleInfoSet.initialiseRules(rules);
+        allRules = RuleGenerator.generateRules(rules, "");
     }
 
     @Override

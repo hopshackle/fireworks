@@ -18,8 +18,6 @@ import java.util.Random;
  */
 public class RandomPlayerApp {
 
-    private static DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("HH:mm:ss 'on' dd-LLL");
-
     public static void main(String[] args) {
         int numGames = (args.length < 1) ? 1 : Integer.valueOf(args[0]);
         if (args.length < 2) {
@@ -35,11 +33,13 @@ public class RandomPlayerApp {
         StatsSummary scoreSummary = new BasicStats();
         StatsSummary timeSummary = new BasicStats();
         StatsCollator.clear();
+        String rules = "";
+        String conventions = "";
 
         for (int i = 0; i < numGames; i++) {
             //         System.out.println("Game " + i + " starting");
             int numPlayers = random.nextInt(4) + 2;
-            GameRunnerWithRandomAgents runner = new GameRunnerWithRandomAgents("test-game", numPlayers);
+            GameRunnerWithRandomAgents runner = new GameRunnerWithRandomAgents("test-game", numPlayers, rules, conventions);
 
             int overridePlayerNumber = agentDescriptor.equals("") ? -1 : random.nextInt(numPlayers);
             //add your agents to the game

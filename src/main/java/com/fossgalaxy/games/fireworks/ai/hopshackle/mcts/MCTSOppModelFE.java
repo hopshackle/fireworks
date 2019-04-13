@@ -10,10 +10,11 @@ import java.util.*;
 public class MCTSOppModelFE extends MCTSOppModelRollout {
 
     @AgentConstructor("mctsOpponentModelFE")
-    public MCTSOppModelFE(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String opponentModelLoc, String valueFnLoc, String rules) {
+    public MCTSOppModelFE(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit,
+                          String opponentModelLoc, String valueFnLoc, String rules, String conventions) {
 //        this.roundLength = roundLength;
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, opponentModelLoc, rules);
-        EvalFnAgent evalFn = new EvalFnAgent(valueFnLoc, 0.0, allRules, true);
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, opponentModelLoc, rules, conventions);
+        EvalFnAgent evalFn = new EvalFnAgent(valueFnLoc, 0.0, rules, conventions);
         expansionPolicy = new RuleFullExpansionOpponentModel(logger, random, allRules, Optional.of(evalFn));
     }
 

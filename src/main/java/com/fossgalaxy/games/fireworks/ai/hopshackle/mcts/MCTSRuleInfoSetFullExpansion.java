@@ -11,8 +11,8 @@ import java.util.Optional;
 public class MCTSRuleInfoSetFullExpansion extends MCTSRuleInfoSet {
 
     @AgentConstructor("hs-RISRuleFE")
-    public MCTSRuleInfoSetFullExpansion(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String rules, Agent agent) {
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rules, agent);
+    public MCTSRuleInfoSetFullExpansion(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String rules, String conventions, Agent agent) {
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rules, conventions, agent);
         expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.of((EvalFnAgent)agent));
     }
 

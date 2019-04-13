@@ -10,8 +10,8 @@ public class StateGathererActionClassifierFullTree extends StateGathererFullTree
 
     private NormalDistribution Z = new NormalDistribution();
 
-    public StateGathererActionClassifierFullTree(int visitThreshold, int depth) {
-        super(visitThreshold, depth);
+    public StateGathererActionClassifierFullTree(String rules, String conventions, int visitThreshold, int depth) {
+        super(rules, conventions, visitThreshold, depth);
         filename = "/TreeActionData.csv";
     }
 
@@ -35,7 +35,7 @@ public class StateGathererActionClassifierFullTree extends StateGathererFullTree
                 if (Double.isNaN(score)) {
                     throw new AssertionError("Not a Number in calculation");
                 }
-                Map<String, Double> features = extractFeaturesWithRollForward(gameState, child.getAction(), playerID, true);
+                Map<String, Double> features = extractFeaturesWithRollForward(gameState, child.getAction(), playerID);
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format("Action %s has value %.3f\n", child.getAction(), score));
                     logger.debug(asCSVLine(features));

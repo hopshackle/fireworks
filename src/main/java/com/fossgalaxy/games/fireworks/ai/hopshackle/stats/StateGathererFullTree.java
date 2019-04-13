@@ -16,7 +16,8 @@ public class StateGathererFullTree extends StateGatherer implements TreeProcesso
     protected int MAX_DEPTH;
     protected String filename;
 
-    public StateGathererFullTree(int visitThreshold, int depth) {
+    public StateGathererFullTree(String rules, String conventions, int visitThreshold, int depth) {
+        super(rules, conventions);
         VISIT_THRESHOLD = visitThreshold;
         MAX_DEPTH = depth;
         filename = "/TreeData.csv";
@@ -84,7 +85,7 @@ public class StateGathererFullTree extends StateGatherer implements TreeProcesso
     public void storeData(MCTSNode node, GameState state, int playerID) {
         // target is the increase in game score from the starting state to game end on taking this action
         double target = (node.getMeanScore() - state.getScore()) / 25.0;
-        Map<String, Double> features = extractFeaturesWithRollForward(state, node.getAction(), playerID, true);
+        Map<String, Double> features = extractFeaturesWithRollForward(state, node.getAction(), playerID);
         String csvLine = asCSVLine(features);
         try {
             writerCSV.write(String.format("%.3f\t%s\n", target, csvLine));

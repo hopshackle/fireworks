@@ -17,23 +17,20 @@ public class PlayProbablySafeLateGameCard extends AbstractRule {
 
     private final double pThreshold;
     private final int deckThreshold;
+    private Conventions conv;
 
-    public PlayProbablySafeLateGameCard() {
-        this.pThreshold = 0.95;
-        this.deckThreshold = 4;
-    }
-
-    public PlayProbablySafeLateGameCard(double threshold, int deck) {
+    public PlayProbablySafeLateGameCard(Conventions conventions, double threshold, int deck) {
         this.pThreshold = threshold;
         this.deckThreshold = deck;
+        conv = conventions;
     }
 
     @Override
     public Action execute(int playerID, GameState state) {
         if (state.getDeck().getCardsLeft() > deckThreshold) return null;
-        Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(playerID, state.getHand(playerID), state.getDeck().toList(), state);
+        Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(playerID, state.getHand(playerID), state.getDeck().toList(), state, conv);
 
-       double bestSoFar = pThreshold;
+        double bestSoFar = pThreshold;
         int bestSlot = -1;
         for (Map.Entry<Integer, List<Card>> entry : possibleCards.entrySet()) {
             double probability = DeckUtils.getProbablity(entry.getValue(), x -> isPlayable(x, state));

@@ -1,25 +1,14 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.rules;
 
 import com.fossgalaxy.games.fireworks.ai.rule.AbstractTellRule;
-import com.fossgalaxy.games.fireworks.state.Card;
-import com.fossgalaxy.games.fireworks.state.GameState;
-import com.fossgalaxy.games.fireworks.state.Hand;
-import com.fossgalaxy.games.fireworks.state.actions.Action;
-import com.fossgalaxy.games.fireworks.state.actions.TellColour;
-import com.fossgalaxy.games.fireworks.state.actions.TellValue;
+import com.fossgalaxy.games.fireworks.state.*;
+import com.fossgalaxy.games.fireworks.state.actions.*;
 
-/**
- * Created by piers on 25/04/17.
- *
- * Tells useful card prioritising the first instance that we can
- * finish telling something, otherwise first instance that we can
- * tell something
- */
-public class CompleteTellCurrentlyNotPlayableCard extends AbstractTellRule {
+public class CompleteTellPlayableCard extends AbstractTellRule {
 
     private Conventions conv;
 
-    public CompleteTellCurrentlyNotPlayableCard(Conventions conventions) {
+    public CompleteTellPlayableCard(Conventions conventions) {
         conv = conventions;
     }
 
@@ -44,8 +33,8 @@ public class CompleteTellCurrentlyNotPlayableCard extends AbstractTellRule {
                 }
 
                 int currTable = state.getTableValue(card.colour);
-                if (card.value <= currTable + 1) {
-                    continue;// This is discardable, or immediately playable
+                if (card.value != currTable + 1) {
+                    continue;
                 }
 
                 // Can we uniquely identify the card?

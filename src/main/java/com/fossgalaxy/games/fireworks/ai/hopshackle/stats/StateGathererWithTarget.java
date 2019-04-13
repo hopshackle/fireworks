@@ -3,6 +3,7 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.stats;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSNode;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSRuleInfoSet;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSRuleNode;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.RuleGenerator;
 import com.fossgalaxy.games.fireworks.ai.rule.*;
 import com.fossgalaxy.games.fireworks.state.*;
 
@@ -12,19 +13,13 @@ import java.util.stream.Collectors;
 
 public class StateGathererWithTarget extends StateGatherer {
 
-    public static List<String> allTargets = new ArrayList();
-
-    static {
-        for (Rule r : MCTSRuleInfoSet.masterRuleMap.values()) {
-            allTargets.add(r.getClass().getSimpleName());
-        }
-        allTargets.add("PLAY_CARD");
-        allTargets.add("DISCARD_CARD");
+    public StateGathererWithTarget(String rules, String conventions) {
+        super(rules, conventions);
     }
 
     public void storeData(MCTSNode node, GameState gameState, int playerID) {
         if (node instanceof MCTSRuleNode) {
-            Map<String, Double> features = extractFeatures(gameState, playerID, true);
+            Map<String, Double> features = extractFeatures(gameState, playerID);
             MCTSRuleNode ruleNode = (MCTSRuleNode) node;
             List<Rule> rulesTriggered = ruleNode.getRulesForChild(ruleNode.getBestNode(), gameState, playerID);
 

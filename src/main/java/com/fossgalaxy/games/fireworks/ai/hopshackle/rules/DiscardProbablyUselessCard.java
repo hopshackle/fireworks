@@ -27,18 +27,16 @@ import java.util.Map;
 public class DiscardProbablyUselessCard extends AbstractDiscardRule {
 
     private final double threshold;
+    private Conventions conv;
 
-    public DiscardProbablyUselessCard() {
-        this(0.75);
-    }
-
-    public DiscardProbablyUselessCard(double threshold) {
+    public DiscardProbablyUselessCard(Conventions conventions, double threshold) {
+        conv = conventions;
         this.threshold = threshold;
     }
 
     @Override
     public Action execute(int playerID, GameState state) {
-        Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(playerID, state.getHand(playerID), state.getDeck().toList(), state);
+        Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(playerID, state.getHand(playerID), state.getDeck().toList(), state, conv);
 
         double bestSoFar = threshold;
         int bestSlot = -1;

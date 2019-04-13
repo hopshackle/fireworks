@@ -3,6 +3,7 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.evalfn.EvalFnAgent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.*;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.RuleGenerator;
 import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 
@@ -14,9 +15,9 @@ public class CRIS_MCTSRule extends CRIS_MCTS {
     protected List<Rule> allRules;
 
     @AgentConstructor("hs-CRISRule")
-    public CRIS_MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String rules, Agent rollout) {
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rollout);
-        allRules = MCTSRuleInfoSet.initialiseRules(rules);
+    public CRIS_MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String rules, String conventions, Agent rollout) {
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, conventions, rollout);
+        allRules = RuleGenerator.generateRules(rules, conventions);
         // TODO: Parameterise this more elegantly in future
         if (rollout instanceof EvalFnAgent)
             expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.of((EvalFnAgent) rollout));

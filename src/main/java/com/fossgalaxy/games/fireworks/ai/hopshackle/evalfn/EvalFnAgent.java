@@ -2,7 +2,9 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.evalfn;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSRuleInfoSet;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.RuleGenerator;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGatherer;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGathererWithTarget;
 import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.GameState;
@@ -24,15 +26,15 @@ public class EvalFnAgent implements Agent {
     private double temperature;
     private boolean debug = false;
     private Random rand = new Random(47);
-    private boolean useConventions;
     private List<Rule> rules;
+    private StateGathererWithTarget stateGatherer;
 
     @AgentConstructor("evalFn")
-    public EvalFnAgent(String modelLocation, double temp, List<Rule> rules, boolean conventions) {
+    public EvalFnAgent(String modelLocation, double temp, String rules, String conventions) {
         //Load the model
         temperature = temp;
-        useConventions = conventions;
-        this.rules = rules;
+        this.rules = RuleGenerator.generateRules(rules, conventions);
+        stateGatherer = new StateGathererWithTarget(rules, conventions);
     //    debug = logger.isDebugEnabled();
         try {
             if (modelLocation.startsWith("RES")) {
@@ -48,10 +50,9 @@ public class EvalFnAgent implements Agent {
         }
     }
 
-    public EvalFnAgent(HopshackleNN brain, double temp, boolean conventions) {
+    public EvalFnAgent(HopshackleNN brain, double temp) {
         this.brain = brain;
         temperature = temp;
-        useConventions = conventions;
     }
 
     @Override
@@ -139,10 +140,10 @@ public class EvalFnAgent implements Agent {
     }
 
     public double valueState(GameState state, Optional<Action> action, int agentID) {
-        Map<String, Double> features = StateGatherer.extractFeatures(state, agentID, useConventions);
+        Map<String, Double> features = stateGatherer.extractFeatures(state, agentID);
         if (action.isPresent())
-            features.putAll(StateGatherer.extractActionFeatures(action.get(), state, agentID, useConventions));
-        double[] featureRepresentation = StateGatherer.featuresToArray(features);
+            features.putAll(stateGatherer.extractActionFeatures(action.get(), state, agentID));
+        double[] featureRepresentation = stateGatherer.featuresToArray(features);
         if (debug) {
             logger.debug(Arrays.stream(featureRepresentation).mapToObj(d -> String.format("%.3f", d)).collect(Collectors.joining("\t")));
         }

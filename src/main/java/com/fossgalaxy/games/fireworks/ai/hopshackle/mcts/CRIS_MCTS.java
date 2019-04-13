@@ -2,6 +2,7 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.*;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.Conventions;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsCollator;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.*;
@@ -11,24 +12,13 @@ import java.util.*;
 public class CRIS_MCTS extends MCTS {
 
     protected int branches = 0, nonBranches =0;
-
-    /*
-    Consistent Re-determinising Information Set Monte Carlo Tree Search
-     */
-    public CRIS_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
-//        this.roundLength = roundLength;
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-    }
+    protected String conv;
 
     @AgentConstructor("hs-CRIS")
-    public CRIS_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
+    public CRIS_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String conventions, Agent rollout) {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
         rolloutPolicy = rollout == null ? new RandomEqual(0) : rollout;
-    }
-
-
-    public CRIS_MCTS() {
-        this(MCTSNode.DEFAULT_EXP_CONST, DEFAULT_ROLLOUT_DEPTH, DEFAULT_TREE_DEPTH_MUL, DEFAULT_TIME_LIMIT);
+        conv = conventions;
     }
 
     @Override
@@ -40,7 +30,7 @@ public class CRIS_MCTS extends MCTS {
         while (System.currentTimeMillis() < finishTime && rollouts < timeLimit * 2) {
             //find a leaf node
             rollouts++;
-            AllPlayerDeterminiser apd = new AllPlayerDeterminiser(state, agentID);
+            AllPlayerDeterminiser apd = new AllPlayerDeterminiser(state, agentID, conv);
             executeBranchingSearch(agentID, apd, root, movesLeft);
 
             if (calcTree) {
@@ -154,7 +144,7 @@ public class CRIS_MCTS extends MCTS {
                     for (int i : branchesNeeded) {
                         // we need to branch
                         branches++;
-                        AllPlayerDeterminiser newApd = new AllPlayerDeterminiser(apd.getDeterminisationFor(i), i);
+                        AllPlayerDeterminiser newApd = new AllPlayerDeterminiser(apd.getDeterminisationFor(i), i, conv);
                         newApd.setParentNode(root);
                         newApd.applyAndCompatibilise(next, true); // we use the action taken by the active determinisation
                         if (logger.isDebugEnabled())

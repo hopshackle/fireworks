@@ -7,6 +7,7 @@ import com.fossgalaxy.games.fireworks.ai.hopshackle.evalfn.HopshackleNN;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.HandDeterminiser;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.RuleExpansionPolicyOpponentModel;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.BoardGameGeekFactory;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.RuleGenerator;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGatherer;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGathererFullTree;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGathererWithTarget;
@@ -33,19 +34,9 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
     protected Random rnd = new Random();
     protected List<Agent> opponentModelFullList = new ArrayList<>();
     protected List<Agent> opponentModels;
-/*
-                "clivej2",
-                        "legal_random",
-                        "cautious",
-                        "flawed",
-                        "piers",
-                        "risky2[0.7]",
-                        "vdb-paper",
-                        "evalFn[RESPlayers_5.params:0.0:true]",
-                        "evalFn[RESPlayers_5.params:0.0:false]",
-                        "iggi2",
-                        "outer"
-  */
+    protected StateGatherer stateGatherer;
+
+
     {
         opponentModelFullList.add(BoardGameGeekFactory.buildCliveJ());
         opponentModelFullList.add(IGGIFactory.buildRandom());
@@ -54,17 +45,20 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         opponentModelFullList.add(IGGIFactory.buildPiersPlayer());
         opponentModelFullList.add(BoardGameGeekFactory.buildRiskyPlayer(0.7));
         opponentModelFullList.add(VanDenBerghFactory.buildAgent());
-        opponentModelFullList.add(new EvalFnAgent("RESPlayers_5.params", 0.0, MCTSRuleInfoSet.initialiseRules("1|2|3|4|6|7|8|9|10|11|12|15"),true));
-        opponentModelFullList.add(new EvalFnAgent("RESPlayers_5.params", 0.0, MCTSRuleInfoSet.initialiseRules("1|2|3|4|6|7|8|9|10|11|12|15"), false));
+        opponentModelFullList.add(new EvalFnAgent("RESPlayers_5.params", 0.0,
+                "1|2|3|4|6|7|8|9|10|11|12|15", ""));
+        opponentModelFullList.add(new EvalFnAgent("RESPlayers_5.params", 0.0,
+                "1|2|3|4|6|7|8|9|10|11|12|15", ""));
         opponentModelFullList.add(IGGIFactory.buildIGGI2Player());
         opponentModelFullList.add(OsawaFactory.buildOuterState());
     }
 
     @AgentConstructor("mctsOpponentModel")
-    public MCTSOppModelRollout(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String modelLocation, String rules) {
+    public MCTSOppModelRollout(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String modelLocation, String rules, String conventions) {
 //        this.roundLength = roundLength;
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rules, null);
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rules, conventions, null);
         expansionPolicy = new RuleExpansionPolicyOpponentModel(logger, random, allRules);
+        stateGatherer = new StateGathererWithTarget(rules, conventions);
         try {
             if (modelLocation.startsWith("RES")) {
                 modelLocation = modelLocation.substring(3);
@@ -113,7 +107,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
             rollouts++;
             GameState currentState = state.getCopy();
 
-            handDeterminiser = new HandDeterminiser(currentState, agentID, false);
+            handDeterminiser = new HandDeterminiser(currentState, agentID, false, conv);
 
             MCTSNode current = select(root, currentState, movesLeft);
             // reset to known hand values before rollout
@@ -125,7 +119,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
 
             double score = rollout(currentState, current, movesLeft - current.getDepth());
             if (logger.isDebugEnabled()) logger.debug(String.format("Backing up a final score of %.2f", score));
-            current.backup(score, null,null);
+            current.backup(score, null, null);
             if (calcTree) {
                 System.out.println(root.printD3());
             }
@@ -297,7 +291,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
             return;    // side-effect, not a deliberate action
 
         GameState determinisedLastState = lastState.getCopy();
-        handDeterminiser = new HandDeterminiser(determinisedLastState, rootPlayer, false);
+        handDeterminiser = new HandDeterminiser(determinisedLastState, rootPlayer, false, conv);
 
         double[] lik = brain.process(featureData(event, determinisedLastState, playerID));
         // then normalise
@@ -358,22 +352,22 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
     }
 
     protected double[] featureData(GameEvent event, GameState state, int playerID) {
-        Map<String, Double> features = StateGatherer.extractFeatures(state, playerID, true);
-        Map<String, Double> featuresBase = StateGatherer.extractFeatures(state, playerID, false);
-        List<Rule> rulesTriggered = GameRunnerWithRandomAgents.getRulesThatTriggered(getActionFromEvent(event), state, playerID);
+        Map<String, Double> features = stateGatherer.extractFeatures(state, playerID);
+        Map<String, Double> featuresBase = stateGatherer.extractFeatures(state, playerID);
+        List<Rule> rulesTriggered = GameRunnerWithRandomAgents.getRulesThatTriggered(allRules, getActionFromEvent(event), state, playerID);
 
         for (Rule r : rulesTriggered) {
             features.put(r.getClass().getSimpleName(), 1.00);
         }
         if (event instanceof CardPlayed) features.put("PLAY_CARD", 1.00);
         if (event instanceof CardDiscarded) features.put("DISCARD_CARD", 1.00);
-        List<Double> features1 = StateGatherer.allFeatures.stream()
+        List<Double> features1 = stateGatherer.allFeatures.stream()
                 .map(k -> features.getOrDefault(k, 0.00))
                 .collect(Collectors.toList());
-        List<Double> features2 = StateGatherer.allFeatures.stream()
+        List<Double> features2 = stateGatherer.allFeatures.stream()
                 .map(k -> featuresBase.getOrDefault(k, 0.00))
                 .collect(Collectors.toList());
-        List<Double> features3 = StateGathererWithTarget.allTargets.stream()
+        List<Double> features3 = stateGatherer.allTargets.stream()
                 .map(k -> features.getOrDefault(k, 0.0))
                 .collect(Collectors.toList());
         features3.addAll(features1);

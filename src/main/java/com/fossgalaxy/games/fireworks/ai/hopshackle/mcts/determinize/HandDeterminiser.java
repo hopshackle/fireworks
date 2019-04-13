@@ -1,6 +1,7 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize;
 
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.ConventionUtils;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.Conventions;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsCollator;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.state.*;
@@ -21,20 +22,22 @@ public class HandDeterminiser {
     private Card cardLastUsed;
     private Random r = new Random(26678);
     private Logger logger = LoggerFactory.getLogger(HandDeterminiser.class);
+    private Conventions conv;
 
-    public HandDeterminiser(GameState state, int rootID, boolean MRIS) {
+    public HandDeterminiser(GameState state, int rootID, boolean MRIS, Conventions conventions) {
         playerCount = state.getPlayerCount();
         alwaysRedeterminise = MRIS;
         rootAgent = rootID;
         slotLastUsed = -1;
         otherSlotLastUsed = -1;
+        this.conv = conventions;
 
         // we then do our one-off determinisation of the root players cards
         for (int i = 0; i < state.getHandSize(); i++)
             if (state.getHand(rootID).getCard(i) != null) {
                 state.getDeck().add(state.getCardAt(rootID, i));
             }
-        AllPlayerDeterminiser.bindNewCards(rootID, state);
+        AllPlayerDeterminiser.bindNewCards(rootID, state, conv);
 
         // and then store the 'master set' to save back to, and track inconsistent rollouts
         handRecord = IntStream.range(0, playerCount)
@@ -80,7 +83,7 @@ public class HandDeterminiser {
             }
 
             // we then bind new cards (same for root and !root)
-            AllPlayerDeterminiser.bindNewCards(agentID, state);
+            AllPlayerDeterminiser.bindNewCards(agentID, state, conv);
         }
         deck.shuffle();
         checkCardTotal(state);

@@ -7,8 +7,8 @@ import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 public class MRIS_MCTSRule extends MCTSRuleInfoSet {
 
     @AgentConstructor("hs-MRISRule")
-    public MRIS_MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String rules, Agent rollout) {
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rules, rollout);
+    public MRIS_MCTSRule(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String rules, String conventions,  Agent rollout) {
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rules, conventions, rollout);
         MRIS = true;
     }
 }

@@ -9,12 +9,12 @@ import com.fossgalaxy.games.fireworks.state.actions.Action;
 /**
  * Tell any other player about a card in their hand if it is useful in this situation.
  */
-public class TellAnyoneAboutUsefulCard extends AbstractTellRule {
+public class TellAnyoneAboutPlayableCard extends AbstractTellRule {
 
-    private static boolean avoidConventionalTells;
+    private Conventions conv;
 
-    public TellAnyoneAboutUsefulCard(boolean avoidConventionalTells) {
-        this.avoidConventionalTells = avoidConventionalTells;
+    public TellAnyoneAboutPlayableCard(Conventions conventions) {
+        conv = conventions;
     }
 
     @Override
@@ -42,7 +42,7 @@ public class TellAnyoneAboutUsefulCard extends AbstractTellRule {
                 }
 
                 for (Action a : ConventionUtils.tellMissing(hand, nextPlayer, slot)) {
-                    if (!avoidConventionalTells || !ConventionUtils.isAConventionalTell(a, state, playerID))
+                    if (!ConventionUtils.isAConventionalTell(a, state, playerID, conv))
                         return a;
                 }
             }

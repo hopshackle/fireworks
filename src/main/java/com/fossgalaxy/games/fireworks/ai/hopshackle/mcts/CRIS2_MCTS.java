@@ -14,23 +14,9 @@ import java.util.List;
 
 public class CRIS2_MCTS extends CRIS_MCTS {
 
-    /*
-    Consistent Re-determinising Information Set Monte Carlo Tree Search
-     */
-    public CRIS2_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit) {
-//        this.roundLength = roundLength;
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-    }
-
     @AgentConstructor("hs-CRIS2")
-    public CRIS2_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, Agent rollout) {
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit);
-        rolloutPolicy = rollout == null ? new RandomEqual(0) : rollout;
-    }
-
-
-    public CRIS2_MCTS() {
-        this(MCTSNode.DEFAULT_EXP_CONST, DEFAULT_ROLLOUT_DEPTH, DEFAULT_TREE_DEPTH_MUL, DEFAULT_TIME_LIMIT);
+    public CRIS2_MCTS(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String conventions, Agent rollout) {
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, conventions, rollout);
     }
 
     protected void executeBranchingSearch(int agentID, AllPlayerDeterminiser apd, MCTSNode root, int movesLeft) {
@@ -134,7 +120,7 @@ public class CRIS2_MCTS extends CRIS_MCTS {
                     for (int i : branchesNeeded) {
                         // we need to branch
                         branches++;
-                        AllPlayerDeterminiser newApd = new AllPlayerDeterminiser(apd.getDeterminisationFor(i), i);
+                        AllPlayerDeterminiser newApd = new AllPlayerDeterminiser(apd.getDeterminisationFor(i), i, conv);
                         newApd.setParentNode(root);
                         newApd.applyAndCompatibilise(next, true); // we use the action taken by the active determinisation
                         if (logger.isDebugEnabled())

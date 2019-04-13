@@ -13,6 +13,12 @@ import com.fossgalaxy.games.fireworks.state.actions.TellValue;
  */
 public class TellNextPlayerAboutSingleUsefulCard extends AbstractTellRule {
 
+    private Conventions conv;
+
+    public TellNextPlayerAboutSingleUsefulCard(Conventions conv) {
+        this.conv = conv;
+    }
+
     @Override
     public Action execute(int playerID, GameState state) {
 

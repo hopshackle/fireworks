@@ -16,6 +16,8 @@ import com.fossgalaxy.games.fireworks.annotations.AgentBuilderStatic;
  */
 public class BoardGameGeekFactory {
 
+    private static Conventions conv = new Conventions("");
+
     /**
      * A factory implementing CliveJ's ruleset
      *
@@ -41,8 +43,8 @@ public class BoardGameGeekFactory {
 
         pra.addRule(new DiscardUnidentifiedCard());
         pra.addRule(new DiscardHighest());
-        pra.addRule(new DiscardLeastLikelyToBeNecessary());
-        pra.addRule(new DiscardProbablyUselessCard(0.0));
+        pra.addRule(new DiscardLeastLikelyToBeNecessary(conv));
+        pra.addRule(new DiscardProbablyUselessCard(conv, 0.0));
 
         return pra;
     }
@@ -56,7 +58,7 @@ public class BoardGameGeekFactory {
         pra.addRule(new TellMostInformation(true));
         pra.addRule(new OsawaDiscard());
         pra.addRule(new TellRandomly());
-        pra.addRule(new DiscardProbablyUselessCard(0.0));
+        pra.addRule(new DiscardProbablyUselessCard(conv, 0.0));
         return pra;
     }
 

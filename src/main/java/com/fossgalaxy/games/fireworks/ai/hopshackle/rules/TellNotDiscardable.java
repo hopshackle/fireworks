@@ -14,10 +14,11 @@ import com.fossgalaxy.games.fireworks.state.actions.TellValue;
  */
 public class TellNotDiscardable extends AbstractTellRule {
 
-    private boolean avoidConventionalTells;
 
-    public TellNotDiscardable(boolean avoidConventionalTells) {
-        this.avoidConventionalTells = avoidConventionalTells;
+    private Conventions conv;
+
+    public TellNotDiscardable(Conventions conventions) {
+        conv = conventions;
     }
 
     @Override
@@ -37,13 +38,13 @@ public class TellNotDiscardable extends AbstractTellRule {
 
                     if (knownValue == null) {
                         Action option = new TellValue(player, actualValue);
-                        if (!avoidConventionalTells || !ConventionUtils.isAConventionalTell(option, state, playerID))
+                        if (!ConventionUtils.isAConventionalTell(option, state, playerID, conv))
                             return option;
                     }
 
                     if (knownColour == null) {
                         Action option = new TellColour(player, actualColour);
-                        if (!avoidConventionalTells || !ConventionUtils.isAConventionalTell(option, state, playerID))
+                        if (!ConventionUtils.isAConventionalTell(option, state, playerID, conv))
                             return option;
                     }
                 }

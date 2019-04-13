@@ -16,18 +16,16 @@ import java.util.Map;
 public class PlayProbablySafeCard extends AbstractRule {
 
     private final double threshold;
+    private Conventions conv;
 
-    public PlayProbablySafeCard() {
-        this.threshold = 0.95;
-    }
-
-    public PlayProbablySafeCard(double threshold) {
+    public PlayProbablySafeCard(Conventions conventions, double threshold) {
+        conv = conventions;
         this.threshold = threshold;
     }
 
     @Override
     public Action execute(int playerID, GameState state) {
-        Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(playerID, state.getHand(playerID), state.getDeck().toList(), state);
+        Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(playerID, state.getHand(playerID), state.getDeck().toList(), state, conv);
 
         double bestSoFar = threshold;
         int bestSlot = -1;

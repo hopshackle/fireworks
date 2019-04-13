@@ -3,6 +3,9 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.stats;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.ConventionUtils;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.evalfn.EvalFnAgent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSNode;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.Conventions;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.RuleGenerator;
+import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.*;
@@ -17,12 +20,8 @@ import java.util.stream.*;
 
 public abstract class StateGatherer {
 
-    public abstract void storeData(MCTSNode node, GameState gameState, int playerID);
-
-    protected static boolean debug = false;
-    protected String fileLocation = "hanabi";
+    protected boolean debug = false;
     protected static Logger logger = LoggerFactory.getLogger(StateGatherer.class);
-
     public static List<String> allFeatures = new ArrayList();
     private static final int[] numberOfType = new int[]{0, 3, 2, 2, 2, 1};
 
@@ -53,29 +52,47 @@ public abstract class StateGatherer {
         allFeatures.add("ONES_ON_TABLE");
     }
 
-    public static double[] featuresToArray(Map<String, Double> features) {
+    public List<Rule> allRules;
+    public List<String> allTargets;
+    protected String fileLocation = "hanabi";
+    protected Conventions conventions;
+
+    public StateGatherer(String rules, String conventionString) {
+        allRules = RuleGenerator.generateRules(rules, conventionString);
+        allTargets = new ArrayList<>();
+        for (Rule r : allRules) {
+            allTargets.add(r.getClass().getSimpleName());
+        }
+        allTargets.add("PLAY_CARD");
+        allTargets.add("DISCARD_CARD");
+        this.conventions = new Conventions(conventionString);
+    }
+
+    public abstract void storeData(MCTSNode node, GameState gameState, int playerID);
+
+    public double[] featuresToArray(Map<String, Double> features) {
         return allFeatures.stream()
                 .mapToDouble(k -> features.getOrDefault(k, 0.00))
                 .toArray();
     }
 
-    public static Map<String, Double> extractFeaturesWithRollForward(GameState state, Action action, int agentID, boolean useConventions) {
+    public Map<String, Double> extractFeaturesWithRollForward(GameState state, Action action, int agentID) {
         GameState newState = EvalFnAgent.rollForward(action, agentID, state);
-        Map<String, Double> retValue = extractFeatures(newState, agentID, useConventions);
-        retValue.putAll(extractActionFeatures(action, state, agentID, useConventions));
+        Map<String, Double> retValue = extractFeatures(newState, agentID);
+        retValue.putAll(extractActionFeatures(action, state, agentID));
         return retValue;
     }
 
-    public static Map<String, Double> extractActionFeatures(Action action, GameState state, int agentID, boolean useConventions) {
+    public Map<String, Double> extractActionFeatures(Action action, GameState state, int agentID) {
         Map<String, Double> features = new HashMap<>();
         if (action != null && action instanceof PlayCard) {
-            double[] probs = probabilities(((PlayCard) action).slot, state, agentID, useConventions);
+            double[] probs = probabilities(((PlayCard) action).slot, state, agentID);
             features.put("PLAY_CARD", 1.0);
             features.put("PLAY_PLAYABLE", probs[0]);
             features.put("PLAY_COMPLETES_COLOUR", probs[3]);
         } else if (action != null && action instanceof DiscardCard) {
-            double discardable = probabilities(((DiscardCard) action).slot, state, agentID, useConventions)[2];
-            double[] usefulStats = lastCardOfUsefulPair(((DiscardCard) action).slot, agentID, state, useConventions);
+            double discardable = probabilities(((DiscardCard) action).slot, state, agentID)[2];
+            double[] usefulStats = lastCardOfUsefulPair(((DiscardCard) action).slot, agentID, state);
             features.put("DISCARD_CARD", 1.0);
             features.put("DISCARD_IS_USELESS", discardable);
             features.put("DISCARD_IS_LAST_OF_USEFUL_PAIR", usefulStats[0]);
@@ -84,7 +101,7 @@ public abstract class StateGatherer {
         return features;
     }
 
-    public static Map<String, Double> extractFeatures(GameState gameState, int agentID, boolean useConventions) {
+    public Map<String, Double> extractFeatures(GameState gameState, int agentID) {
         Map<String, Double> newTuple = new HashMap();
         newTuple.put("SCORE", gameState.getScore() / 25.0);
         newTuple.put("INFORMATION", gameState.getInfomation() / (double) gameState.getStartingInfomation());
@@ -111,9 +128,8 @@ public abstract class StateGatherer {
                         .filter(Objects::nonNull)
                         .forEach(possibles::add);
             // we need to add the actual cards in the player's hand to those they think they might have
-            Map<Integer, List<Card>> possibleCards = useConventions
-                    ? ConventionUtils.bindBlindCardWithConventions(featurePlayer, playerHand, possibles, gameState)
-                    : DeckUtils.bindBlindCard(featurePlayer, playerHand, possibles);
+            Map<Integer, List<Card>> possibleCards =  ConventionUtils.bindBlindCardWithConventions(featurePlayer, playerHand, possibles, gameState, conventions);
+//                    : DeckUtils.bindBlindCard(featurePlayer, playerHand, possibles);
             // this provides us with all possible values for the cards in hand, from the perspective of that player
             // so we can now go through this to calculate the probability of playable / discardable
             double[] maxPlayable = new double[3];
@@ -145,28 +161,26 @@ public abstract class StateGatherer {
         return newTuple;
     }
 
-    private static Map<Integer, List<Card>> getPossibleCardsAssumingHandInDeck(GameState state, int playerID, boolean useConventions) {
+    private Map<Integer, List<Card>> getPossibleCardsAssumingHandInDeck(GameState state, int playerID) {
         List<Card> possibles = state.getDeck().toList();
         Hand playerHand = state.getHand(playerID);
-        Map<Integer, List<Card>> possibleCards = useConventions
-                ? ConventionUtils.bindBlindCardWithConventions(playerID, playerHand, possibles, state)
-                : DeckUtils.bindBlindCard(playerID, playerHand, possibles);
+        Map<Integer, List<Card>> possibleCards = ConventionUtils.bindBlindCardWithConventions(playerID, playerHand, possibles, state, conventions);
         return possibleCards;
     }
 
-    private static int suitsAtOrHigherThan(int number, GameState state) {
+    private int suitsAtOrHigherThan(int number, GameState state) {
         return (int) Arrays.stream(CardColour.values())
                 .mapToInt(state::getTableValue)
                 .filter(v -> v >= number)
                 .count();
     }
 
-    private static double[] probabilities(int slot, GameState state, int playerID, boolean useConventions) {
-        Map<Integer, List<Card>> possibleCards = getPossibleCardsAssumingHandInDeck(state, playerID, useConventions);
+    private double[] probabilities(int slot, GameState state, int playerID) {
+        Map<Integer, List<Card>> possibleCards = getPossibleCardsAssumingHandInDeck(state, playerID);
         return probabilities(state, possibleCards.get(slot));
     }
 
-    private static double[] probabilities(GameState gameState, List<Card> possibleCards) {
+    private double[] probabilities(GameState gameState, List<Card> possibleCards) {
         int playable = 0;
         int discardable = 0;
         int completesColour = 0;
@@ -197,10 +211,10 @@ public abstract class StateGatherer {
         return retValue;
     }
 
-    private static double[] lastCardOfUsefulPair(int slot, int player, GameState state, boolean useConventions) {
+    private double[] lastCardOfUsefulPair(int slot, int player, GameState state) {
         double numberOfSuchCards = 0.0;
         double pointsForegone = 0.0;
-        List<Card> possibleCards = getPossibleCardsAssumingHandInDeck(state, player, useConventions).get(slot);
+        List<Card> possibleCards = getPossibleCardsAssumingHandInDeck(state, player).get(slot);
         for (Card c : possibleCards) {
             if (state.getTableValue(c.colour) >= c.value) {
                 // not useful (discardable)
@@ -238,7 +252,7 @@ public abstract class StateGatherer {
         return new double[]{numberOfSuchCards / possibleCards.size(), pointsForegone / possibleCards.size()};
     }
 
-    private static int pointsAlreadyThrownAway(GameState state) {
+    private int pointsAlreadyThrownAway(GameState state) {
         int retValue = 0;
         for (CardColour colour : CardColour.values()) {
             for (int i = 1; i <= 5; i++) {
@@ -251,7 +265,7 @@ public abstract class StateGatherer {
         return retValue;
     }
 
-    private static boolean allCardsDiscarded(int value, CardColour colour, Collection<Card> discardPile) {
+    private boolean allCardsDiscarded(int value, CardColour colour, Collection<Card> discardPile) {
         int possibleCards = numberOfType[value];
         for (Card discard : discardPile) {
             if (discard.colour == colour) {
@@ -265,7 +279,7 @@ public abstract class StateGatherer {
         return false;
     }
 
-    private static void updateOrder(double[] orderedArray, double newValue) {
+    private void updateOrder(double[] orderedArray, double newValue) {
         if (newValue > orderedArray[0]) {
             orderedArray[2] = orderedArray[1];
             orderedArray[1] = orderedArray[0];
@@ -278,7 +292,7 @@ public abstract class StateGatherer {
         }
     }
 
-    private static int numberOfSuitsWithDiscardedFive(GameState state) {
+    private int numberOfSuitsWithDiscardedFive(GameState state) {
         int retValue = 0;
         for (Card c : state.getDiscards()) {
             if (c.value == 5) retValue++;
@@ -286,7 +300,7 @@ public abstract class StateGatherer {
         return retValue;
     }
 
-    private static int numberOfSuitsWithDiscardedFour(GameState state) {
+    private int numberOfSuitsWithDiscardedFour(GameState state) {
         Map<CardColour, Integer> tracker = new HashMap();
         for (Card c : state.getDiscards()) {
             if (c.value == 4) {
@@ -341,7 +355,7 @@ public abstract class StateGatherer {
         throw new AssertionError("Should not be able to reach this");
     }
 
-    private static double informationForPlayer(GameState state, int playerID) {
+    private double informationForPlayer(GameState state, int playerID) {
         double retValue = 0.0;
         int actualCards = 0;
         Hand h = state.getHand(playerID);

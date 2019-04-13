@@ -13,16 +13,8 @@ import java.util.stream.Collectors;
 
 public class StateGathererWithTargetFullTree extends StateGathererFullTree {
 
-    public static List<String> allTargets = new ArrayList();
-
-    static {
-        for (Rule r : MCTSRuleInfoSet.masterRuleMap.values()) {
-            allTargets.add(r.getClass().getSimpleName());
-        }
-    }
-
-    public StateGathererWithTargetFullTree(int visitThreshold, int depth) {
-        super(visitThreshold, depth);
+    public StateGathererWithTargetFullTree(String rules, String conventions,int visitThreshold, int depth) {
+        super(rules, conventions, visitThreshold, depth);
         filename = "/TreeTargetData.csv";
     }
 
@@ -39,7 +31,7 @@ public class StateGathererWithTargetFullTree extends StateGathererFullTree {
     @Override
     public void storeData(MCTSNode node, GameState gameState, int playerID) {
         if (node instanceof MCTSRuleNode) {
-            Map<String, Double> features = extractFeatures(gameState, playerID, true);
+            Map<String, Double> features = extractFeatures(gameState, playerID);
             MCTSRuleNode ruleNode = (MCTSRuleNode) node;
             List<Rule> rulesTriggered = ruleNode.getRulesForChild(ruleNode.getBestNode(), gameState, playerID);
 
