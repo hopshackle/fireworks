@@ -99,6 +99,10 @@ public class AllPlayerDeterminiser {
             throw new AssertionError("no cards ");
         } else {
             Map<Integer, List<Card>> possibleCardsFinal = ConventionUtils.bindBlindCardWithConventions(agentID, state.getHand(agentID), toChooseFrom, state, conv);
+            for (int i : possibleCardsFinal.keySet()) {
+                if (myHand.hasCard(i) && possibleCardsFinal.get(i).isEmpty())
+                    throw new AssertionError("Should have possible card in slot " + i);
+            }
             List<Integer> bindOrder = DeckUtils.bindOrder(possibleCardsFinal);
             bindOrder = bindOrder.stream().filter(slot -> !possibleCardsFinal.get(slot).isEmpty()).collect(Collectors.toList());
             Map<Integer, List<Card>> possibleCards = possibleCardsFinal;

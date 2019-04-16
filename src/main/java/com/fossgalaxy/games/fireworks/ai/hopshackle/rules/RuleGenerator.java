@@ -14,7 +14,7 @@ public class RuleGenerator {
             Integer key = Integer.valueOf(mnemonic);
             switch (key) {
                 case 1:
-                    retValue.add(new TellNextPlayerAboutSingleUsefulCard(conventions));
+                    retValue.add(new TellAboutSingleUsefulCard(conventions));
                     break;
                 case 2:
                     retValue.add(new TellMostInformation(conventions));
@@ -24,6 +24,9 @@ public class RuleGenerator {
                     break;
                 case 4:
                     retValue.add(new TellDispensable(conventions));
+                    break;
+                case 5:
+                    retValue.add(new TellRedOrangeForPlayableNewCard(conventions));
                     break;
                 case 6:
                     retValue.add(new CompleteTellPlayableCard(conventions));

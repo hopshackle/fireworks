@@ -9,32 +9,22 @@ import com.fossgalaxy.games.fireworks.state.actions.TellColour;
 import com.fossgalaxy.games.fireworks.state.actions.TellValue;
 
 /**
- * Created by piers on 25/04/17.
- *
- * Tells useful card prioritising the first instance that we can
- * finish telling something, otherwise first instance that we can
- * tell something
+ * Tell the next player only about a single card in their hand that is currently useful
  */
-public class CompleteTellCurrentlyNotPlayableCard extends AbstractTellRule {
+public class TellAboutSingleUsefulCard extends AbstractTellRule {
 
     private Conventions conv;
 
-    public CompleteTellCurrentlyNotPlayableCard(Conventions conventions) {
-        conv = conventions;
+    public TellAboutSingleUsefulCard(Conventions conv) {
+        this.conv = conv;
     }
 
     @Override
     public Action execute(int playerID, GameState state) {
 
-
         for (int i = 0; i < state.getPlayerCount(); i++) {
             int nextPlayer = (playerID + i) % state.getPlayerCount();
             Hand hand = state.getHand(nextPlayer);
-
-            //gard against trying to tell ourselves things
-            if (nextPlayer == playerID) {
-                continue;
-            }
 
             for (int slot = 0; slot < state.getHandSize(); slot++) {
 
@@ -44,27 +34,37 @@ public class CompleteTellCurrentlyNotPlayableCard extends AbstractTellRule {
                 }
 
                 int currTable = state.getTableValue(card.colour);
-                if (card.value <= currTable + 1) {
-                    continue;// This is discardable, or immediately playable
+                if (card.value != currTable + 1) {
+                    continue;
                 }
 
-                // Can we uniquely identify the card?
-                if(hand.getKnownValue(slot) == null ^ hand.getKnownColour(slot) == null){
-                    if (hand.getKnownValue(slot) == null) {
-                        Action proposal = new TellValue(nextPlayer, card.value);
-                        if (!ConventionUtils.isAnInvalidConventionalTell(proposal, state, playerID, conv))
-                            return proposal;
-                    }
+                int numberOfCardsCluedByColour = 1;
+                int numberOfCardsCluedByValue = 1;
+                for (int j = 0; j < state.getHandSize(); j++) {
+                    if (j == slot || !hand.hasCard(j)) continue;
+                    Card otherCard = hand.getCard(j);
+                    if (otherCard.value == card.value) numberOfCardsCluedByValue++;
+                    if (otherCard.colour == card.colour) numberOfCardsCluedByColour++;
+                }
 
-                    if (hand.getKnownColour(slot) == null) {
+                if (numberOfCardsCluedByValue > 1) {
+                    if (numberOfCardsCluedByColour > 1) {
+                        continue;
+                        // try next card
+                    } else {
                         Action proposal = new TellColour(nextPlayer, card.colour);
                         if (!ConventionUtils.isAnInvalidConventionalTell(proposal, state, playerID, conv))
                             return proposal;
                     }
+                } else {
+                    Action proposal = new TellValue(nextPlayer, card.value);
+                    if (!ConventionUtils.isAnInvalidConventionalTell(proposal, state, playerID, conv))
+                        return proposal;
                 }
-
             }
         }
+
         return null;
     }
+
 }

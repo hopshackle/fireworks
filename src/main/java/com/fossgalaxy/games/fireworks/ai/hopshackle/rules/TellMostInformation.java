@@ -46,7 +46,7 @@ public class TellMostInformation extends AbstractTellRule {
                 }
                 if (totalAffected > bestAffected) {
                     Action newOption = new TellValue(player, i);
-                    if (ConventionUtils.isAConventionalTell(newOption, state, playerID, conv)) {
+                    if (ConventionUtils.isAnInvalidConventionalTell(newOption, state, playerID, conv)) {
                         // skip this one
                     } else {
                         bestAffected = totalAffected;
@@ -68,7 +68,7 @@ public class TellMostInformation extends AbstractTellRule {
                 }
                 if (totalAffected > bestAffected) {
                     Action newOption = new TellColour(player, colour);
-                    if (ConventionUtils.isAConventionalTell(newOption, state, playerID, conv)) {
+                    if (ConventionUtils.isAnInvalidConventionalTell(newOption, state, playerID, conv)) {
                         // skip this one
                     } else {
                         bestAffected = totalAffected;

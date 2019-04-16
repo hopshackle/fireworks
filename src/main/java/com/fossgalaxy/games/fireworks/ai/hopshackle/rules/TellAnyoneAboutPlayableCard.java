@@ -42,7 +42,7 @@ public class TellAnyoneAboutPlayableCard extends AbstractTellRule {
                 }
 
                 for (Action a : ConventionUtils.tellMissing(hand, nextPlayer, slot)) {
-                    if (!ConventionUtils.isAConventionalTell(a, state, playerID, conv))
+                    if (!ConventionUtils.isAnInvalidConventionalTell(a, state, playerID, conv))
                         return a;
                 }
             }

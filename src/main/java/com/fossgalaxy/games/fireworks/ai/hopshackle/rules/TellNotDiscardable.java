@@ -38,13 +38,13 @@ public class TellNotDiscardable extends AbstractTellRule {
 
                     if (knownValue == null) {
                         Action option = new TellValue(player, actualValue);
-                        if (!ConventionUtils.isAConventionalTell(option, state, playerID, conv))
+                        if (!ConventionUtils.isAnInvalidConventionalTell(option, state, playerID, conv))
                             return option;
                     }
 
                     if (knownColour == null) {
                         Action option = new TellColour(player, actualColour);
-                        if (!ConventionUtils.isAConventionalTell(option, state, playerID, conv))
+                        if (!ConventionUtils.isAnInvalidConventionalTell(option, state, playerID, conv))
                             return option;
                     }
                 }

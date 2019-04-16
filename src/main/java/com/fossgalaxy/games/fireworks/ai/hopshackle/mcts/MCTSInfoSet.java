@@ -2,11 +2,13 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.HandDeterminiser;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.ConventionUtils;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.Conventions;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsCollator;
 import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
+import com.fossgalaxy.games.fireworks.state.actions.TellColour;
 import com.fossgalaxy.games.fireworks.state.events.GameEvent;
 
 import java.util.*;
@@ -127,7 +129,7 @@ public class MCTSInfoSet extends MCTS {
                 }
             }
 
-            for (int i= 0; i < cardsAdded; i++) deck.getTopCard();
+            for (int i = 0; i < cardsAdded; i++) deck.getTopCard();
 
             if (next == null) {
                 //XXX if all follow on states explored so far are null, we are now a leaf node
@@ -144,6 +146,9 @@ public class MCTSInfoSet extends MCTS {
 
             // we then apply the action to state, and re-determinise the hand for the next agent
             Action action = current.getAction();
+   /*         if (action instanceof TellColour && ConventionUtils.isAnInvalidConventionalTell(action, state, agent, conv)) {
+                throw new AssertionError("Should not be able to do this");
+            } */
             if (logger.isDebugEnabled()) logger.debug("MCTSIS: Selected action " + action + " for player " + agent);
             if (action != null) {
                 state.tick();
@@ -155,7 +160,6 @@ public class MCTSInfoSet extends MCTS {
                 if (current.getReferenceState() == null)
                     current.setReferenceState(state.getCopy());
             }
-
         }
         return current;
     }

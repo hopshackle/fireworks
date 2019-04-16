@@ -41,13 +41,13 @@ public class CompleteTellPlayableCard extends AbstractTellRule {
                 if(hand.getKnownValue(slot) == null ^ hand.getKnownColour(slot) == null){
                     if (hand.getKnownValue(slot) == null) {
                         Action proposal = new TellValue(nextPlayer, card.value);
-                        if (!ConventionUtils.isAConventionalTell(proposal, state, nextPlayer, conv))
+                        if (!ConventionUtils.isAnInvalidConventionalTell(proposal, state, playerID, conv))
                             return proposal;
                     }
 
                     if (hand.getKnownColour(slot) == null) {
                         Action proposal = new TellColour(nextPlayer, card.colour);
-                        if (!ConventionUtils.isAConventionalTell(proposal, state, nextPlayer, conv))
+                        if (!ConventionUtils.isAnInvalidConventionalTell(proposal, state, playerID, conv))
                             return proposal;
                     }
                 }
