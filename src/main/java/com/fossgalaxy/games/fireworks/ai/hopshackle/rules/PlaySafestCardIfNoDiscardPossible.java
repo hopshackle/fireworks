@@ -25,6 +25,13 @@ public class PlaySafestCardIfNoDiscardPossible extends PlayProbablySafeCard {
     }
 
     @Override
+    public Action execute(int playerID, GameState state) {
+        if (canFire(playerID, state))
+            return super.execute(playerID, state);
+        return null;
+    }
+
+    @Override
     public String toString() {
         return "If No Discard " + super.toString();
     }

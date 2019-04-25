@@ -75,6 +75,7 @@ public class EvalFnAgent implements Agent {
 
         OptionalDouble largestValueOption = actionValues.values().stream().mapToDouble(i -> i).max();
         if (!largestValueOption.isPresent()) {
+     //       return null;
             getAllActionValues(agentID, gameState);
             throw new AssertionError("No values");
         }

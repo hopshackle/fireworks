@@ -17,8 +17,8 @@ public class RandomRule implements Agent {
     private Random rand = new Random(4);
 
     @AgentConstructor("hs-randomRule")
-    public RandomRule(String rules) {
-        allRules = RuleGenerator.generateRules(rules, "");
+    public RandomRule(String rules, String conventions) {
+        allRules = RuleGenerator.generateRules(rules, conventions);
     }
 
     @Override

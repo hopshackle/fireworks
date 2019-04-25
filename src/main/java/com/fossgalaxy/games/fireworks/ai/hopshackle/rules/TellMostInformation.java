@@ -24,7 +24,7 @@ public class TellMostInformation extends AbstractTellRule {
     @Override
     public Action execute(int playerID, GameState state) {
         Action bestAction = null;
-        int bestAffected = 0;
+        int bestAffected = -1;
         for (int p = 1; p < state.getPlayerCount(); p++) {
             int player = (playerID + p) % state.getPlayerCount();
             if (player == playerID) {
