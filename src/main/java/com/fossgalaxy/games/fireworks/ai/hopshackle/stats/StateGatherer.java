@@ -9,9 +9,7 @@ import com.fossgalaxy.games.fireworks.ai.rule.Rule;
 import com.fossgalaxy.games.fireworks.ai.rule.logic.DeckUtils;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.*;
-import com.fossgalaxy.games.fireworks.state.events.CardDrawn;
-import com.fossgalaxy.games.fireworks.state.events.CardReceived;
-import com.fossgalaxy.games.fireworks.state.events.GameEvent;
+import com.fossgalaxy.games.fireworks.state.events.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,7 +107,7 @@ public abstract class StateGatherer {
         double cardsInStartingDeck = 50 - gameState.getPlayerCount() * gameState.getHandSize();
         // size of deck included the active player's cards
         newTuple.put("DECK_LEFT", (gameState.getDeck().getCardsLeft() - cardsNotInHandThatAreInDeck(gameState, agentID)) / cardsInStartingDeck);
-        newTuple.put("MOVES_LEFT", (double) movesLeft(gameState, agentID) / gameState.getPlayerCount());
+        newTuple.put("MOVES_LEFT", (double) gameState.getMovesLeft() / gameState.getPlayerCount());
         newTuple.put("UNAVAILABLE_POINTS", pointsAlreadyThrownAway(gameState) / 25.0);
         newTuple.put("FIVES_ON_TABLE", suitsAtOrHigherThan(5, gameState) / 5.0);
         newTuple.put("FOURS_ON_TABLE", suitsAtOrHigherThan(4, gameState) / 5.0);
@@ -318,7 +316,7 @@ public abstract class StateGatherer {
     }
 
 
-    private static int cardsNotInHandThatAreInDeck(GameState state, int playerID) {
+    public static int cardsNotInHandThatAreInDeck(GameState state, int playerID) {
         long retValue = IntStream.range(0, state.getHandSize())
                 .filter(i -> {
                     Hand h = state.getHand(playerID);
@@ -330,26 +328,23 @@ public abstract class StateGatherer {
 
     /*
     Returns the number of Moves Left, based on being called just before playerID takes their turn
-     */
+*/
     public static int movesLeft(GameState state, int playerID) {
         if (state.getDeck().getCardsLeft() - cardsNotInHandThatAreInDeck(state, playerID) > 0)
             return state.getPlayerCount();
-        List<GameEvent> history = state.getHistory();
+        List<HistoryEntry> history = state.getActionHistory();
         for (int i = history.size() - 1; i >= 0; i--) {
-            GameEvent e = history.get(i);
-            if (e instanceof CardDrawn) {
-                // "player %s draw card %s %d in slot %d"
-                // and a huge hack to extract the playerID from the string representation
-                // as it's a private field!
-                int playerWhoDrew = Integer.valueOf(e.toString().substring(7, 8));
-                // if the next player, then everyone has a turn left
-                // if playerID == playerWhoDrew, then this is the last turn (so 1 move left)
-                return (state.getPlayerCount() - playerID + playerWhoDrew) % state.getPlayerCount() + 1;
-            } else if (e instanceof CardReceived) {
-                CardReceived event = (CardReceived) e;
-                if (event.isReceived() && event.isVisibleTo(playerID))
-                    return 1;
-                // in this case, we drew the last card, so this is our last move
+            HistoryEntry h = history.get(i);
+            for (GameEvent e : h.history) {
+                if (e instanceof CardReceived || e instanceof CardDrawn) {
+                    int playerWhoDrew = e instanceof CardReceived ? ((CardReceived) e).getPlayerId() : ((CardDrawn) e).getPlayerId();
+                    if (playerWhoDrew == playerID)
+                        return 1;
+                    // in this case, we drew the last card, so this is our last move
+
+                    // if the next player, then everyone has a turn left
+                    return (state.getPlayerCount() - playerID + playerWhoDrew) % state.getPlayerCount() + 1;
+                }
             }
         }
         throw new AssertionError("Should not be able to reach this");

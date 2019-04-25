@@ -18,9 +18,6 @@ import java.util.*;
  * Created by WebPigeon on 09/08/2016.
  */
 public class MCTS implements Agent, HasGameOverProcessing {
-    public static final int DEFAULT_ROLLOUT_DEPTH = 18;
-    public static final int DEFAULT_TREE_DEPTH_MUL = 1;
-    public static final int DEFAULT_TIME_LIMIT = 1000;
 
     //   protected final int roundLength;
     protected final int rolloutDepth;
@@ -64,7 +61,8 @@ public class MCTS implements Agent, HasGameOverProcessing {
 
     @Override
     public Action doMove(int agentID, GameState state) {
-        int movesLeft = StateGatherer.movesLeft(state, agentID);
+        int movesLeft = state.getMovesLeft();
+
         if (movesLeft != state.getPlayerCount()) {
             // we are in the endGame, but this is not recorded within state
         } else {
@@ -95,6 +93,10 @@ public class MCTS implements Agent, HasGameOverProcessing {
 
         MCTSNode bestNode = root.getBestNode();
         Action chosenOne = (bestNode != null) ? bestNode.getAction() : new PlayCard(0);
+
+   //     System.out.println(String.format("Turn %d, Player %d takes Action %s, %d real moves Left, %d lives left, %d information tokens, %d cards in deck",
+   //             state.getTurnNumber(), agentID, chosenOne.toString(), StateGatherer.movesLeft(state, agentID), state.getLives(), state.getInfomation(), state.getDeck().getCardsLeft()));
+
         if (logger.isTraceEnabled()) {
             logger.trace("Move Chosen by {} was {}", agentID, chosenOne);
             root.printChildren();
@@ -216,9 +218,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
             Action action = current.getAction();
             if (logger.isTraceEnabled()) logger.trace("Selected action " + action + " for player " + agent);
             if (action != null) {
-                state.tick();
-                List<GameEvent> events = action.apply(agent, state);
-                events.forEach(state::addEvent);
+                action.apply(agent, state);
                 if (current.getReferenceState() == null)
                     current.setReferenceState(state.getCopy());
             }
@@ -283,13 +283,7 @@ public class MCTS implements Agent, HasGameOverProcessing {
                 }
             }
             Action action = selectActionForRollout(state, playerID);
-            state.tick();
-            List<GameEvent> events = action.apply(playerID, state);
-            if (logger.isTraceEnabled()) {
-                logger.trace(String.format("Player %d, Rollout: %s", playerID, action));
-                events.forEach(e -> logger.trace(String.format("\t%s", e.toString())));
-            }
-            events.forEach(state::addEvent);
+            action.apply(playerID, state);
             playerID = (playerID + 1) % state.getPlayerCount();
             moves++;
         }

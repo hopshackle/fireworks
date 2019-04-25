@@ -151,10 +151,8 @@ public class MCTSInfoSet extends MCTS {
             } */
             if (logger.isDebugEnabled()) logger.debug("MCTSIS: Selected action " + action + " for player " + agent);
             if (action != null) {
-                state.tick();
                 handDeterminiser.recordAction(action, agent, state);
-                List<GameEvent> events = action.apply(agent, state);
-                events.forEach(state::addEvent);
+                action.apply(agent, state);
                 // we then set the reference state on the node, once the action has actually been executed
                 // this is a fully determinised state
                 if (current.getReferenceState() == null)

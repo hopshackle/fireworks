@@ -15,8 +15,8 @@ public class MCTSRuleNode extends MCTSNode {
 
     protected final List<Rule> allRules;
 
-    public MCTSRuleNode(MCTSRuleNode parent, int agentId, Action moveToState, double expConst, List<Rule> possibleRules) {
-        super(parent, agentId, moveToState, expConst, new ArrayList<>());
+    public MCTSRuleNode(MCTSRuleNode parent, int agentId, Action moveToState, double expConst, List<Rule> possibleRules, int priorVisits, double priorValue) {
+        super(parent, agentId, moveToState, expConst, new ArrayList<>(), priorVisits, priorValue);
         allRules = possibleRules;
         assert (parent != null && moveToState != null) || (parent == null && moveToState == null);
     }

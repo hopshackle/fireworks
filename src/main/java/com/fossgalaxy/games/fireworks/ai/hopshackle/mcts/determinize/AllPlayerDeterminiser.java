@@ -155,9 +155,7 @@ public class AllPlayerDeterminiser {
         GameState masterDeterminisation = getDeterminisationFor(root).getCopy();
         // firstly we apply the action to the master determinisation
         try {
-            determinisationsByPlayer[root].tick();
-            List<GameEvent> events = action.apply(node.getAgentId(), determinisationsByPlayer[root]);
-            events.forEach(determinisationsByPlayer[root]::addEvent);
+            action.apply(node.getAgentId(), determinisationsByPlayer[root]);
         } catch (RulesViolation rv) {
             throw rv;
         }
@@ -180,8 +178,8 @@ public class AllPlayerDeterminiser {
         }
 
         for (int i = 0; i < determinisationsByPlayer.length; i++) {
-            if (determinisationsByPlayer[i].getHistory().size() != determinisationsByPlayer[root].getHistory().size())
-                throw new AssertionError("All determinisations should have the same history");
+            if (determinisationsByPlayer[i].getTurnNumber() != determinisationsByPlayer[root].getTurnNumber())
+                throw new AssertionError("All determinisations should have the same number of turns");
         }
 
         if (logger.isDebugEnabled())

@@ -18,12 +18,12 @@ public class RuleExpansionPolicy extends SimpleNodeExpansion {
     }
 
     @Override
-    public MCTSNode createNode(MCTSNode parent, int previousAgentID, Action moveTo, double C) {
+    public MCTSNode createNode(MCTSNode parent, int previousAgentID, Action moveTo, double C, int priorVisits, double priorValue) {
         MCTSRuleNode root = new MCTSRuleNode(
                 (MCTSRuleNode) parent,
                 previousAgentID,
                 moveTo, C,
-                allRules);
+                allRules, priorVisits, priorValue);
 
         return root;
     }
@@ -34,7 +34,7 @@ public class RuleExpansionPolicy extends SimpleNodeExpansion {
         MCTSNode root = new MCTSRuleNode(
                 null,
                 previousAgentID,
-                null, C, allRules);
+                null, C, allRules, 0, 0.0);
         return root;
     }
 

@@ -130,8 +130,7 @@ public class GameRunnerWithRandomAgents extends GameRunner {
         //perform the action and get the effects
         logger.info("player {} made move {} as turn {}", nextPlayer, action, moves);
         moves++;
-        Collection<GameEvent> events = action.apply(nextPlayer, state);
-        events.forEach(this::send);
+        action.apply(nextPlayer, state);
 
         //make sure it's the next player's turn
         nextPlayer = (nextPlayer + 1) % players.length;

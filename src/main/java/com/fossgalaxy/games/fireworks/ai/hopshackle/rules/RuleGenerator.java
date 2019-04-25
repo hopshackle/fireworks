@@ -58,6 +58,12 @@ public class RuleGenerator {
                 case 15:
                     retValue.add(new TellNotDiscardable(conventions));
                     break;
+                case 16:
+                    retValue.add(new PlayProbablySafeCard(conventions, 0.0));
+                    break;
+                case 17:
+                    retValue.add(new PlaySafestCardIfNoDiscardPossible(conventions));
+                    break;
                 default:
                     throw new AssertionError("Mnemonic for rule does not exist: " + mnemonic);
             }

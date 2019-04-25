@@ -147,7 +147,7 @@ public class MCTSNode {
         for (MCTSNode child : children) {
             //XXX Hack to check if the move is legal in this version
             Action moveToMake = child.moveToState;
-            if (!legalAction(moveToMake, child.agentId, state))
+            if (!LegalActionFilter.isLegal(child.agentId, state).test(moveToMake))
                 continue;
 
             double childScore = child.getUCTValue() + (random.nextDouble() * EPSILON);
@@ -166,26 +166,11 @@ public class MCTSNode {
         return bestChild;
     }
 
-    private boolean legalAction(Action action, int player, GameState state) {
-        if (action instanceof DiscardCard) {
-            DiscardCard dc = (DiscardCard) action;
-            if (state.getInfomation() == state.getStartingInfomation() || !state.getHand(player).hasCard(dc.slot))
-                return false;
-        } else if (action instanceof PlayCard) {
-            PlayCard pc = (PlayCard) action;
-            if (!state.getHand(player).hasCard(pc.slot))
-                return false;
-        } else if (!action.isLegal(player, state)) {
-            return false;
-        }
-        return true;
-    }
 
     protected void incrementParentVisitsForAllEligibleActions(GameState state) {
         for (MCTSNode child : children) {
-            if (!legalAction(child.moveToState, child.agentId, state))
-                continue;
-            incrementParentVisit(child.moveToState);
+            if (LegalActionFilter.isLegal(child.agentId, state).test(child.moveToState))
+                incrementParentVisit(child.moveToState);
         }
         for (Action unexpandedAction : getLegalUnexpandedMoves(state, (getAgentId() + 1) % state.getPlayerCount())) {
             incrementParentVisit(unexpandedAction);

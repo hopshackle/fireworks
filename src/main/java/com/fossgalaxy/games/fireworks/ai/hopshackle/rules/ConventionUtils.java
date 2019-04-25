@@ -7,6 +7,7 @@ import com.fossgalaxy.games.fireworks.state.events.*;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class ConventionUtils {
@@ -53,7 +54,8 @@ public class ConventionUtils {
                     Card c = state.getHand(playerTold).getCard(i);
                     if (c != null) allCards.add(c);
                 }
-                List<Card> possibleCards = DeckUtils.bindBlindCard(playerTold, state.getHand(playerTold), allCards).get(slotTold);
+                List<Card> possibleCards = DeckUtils.bindBlindCard(playerTold, state.getHand(playerTold), allCards).get(slotTold)
+                        .stream().filter(compatibleWithHint(proposedTell)).collect(Collectors.toList());
                 Map<CardColour, Integer> currentScores = Arrays.stream(CardColour.values()).collect(Collectors.toMap(Function.identity(), state::getTableValue));
                 if (!filterToPlayableCards(possibleCards, currentScores).isEmpty())
                     return true;
@@ -75,18 +77,29 @@ public class ConventionUtils {
         return false;
     }
 
+    private static Predicate<Card> compatibleWithHint(Action proposedTell) {
+        if (proposedTell instanceof TellColour) {
+            TellColour tellColour = (TellColour) proposedTell;
+            return card -> tellColour.colour == card.colour;
+        } else if (proposedTell instanceof TellValue) {
+            TellValue tellValue = (TellValue) proposedTell;
+            return card -> tellValue.value == card.value;
+        }
+        return card -> true;
+    }
+
     public static int slotMostRecentlyDrawn(GameState state, int player) {
-        Iterator<GameEvent> backwardsHistory = state.getHistory().descendingIterator();
-        while (backwardsHistory.hasNext()) {
-            GameEvent event = backwardsHistory.next();
-            switch (event.getEvent()) {
+        ListIterator<HistoryEntry> backwardsHistory = state.getActionHistory().listIterator(state.getActionHistory().size());
+        while (backwardsHistory.hasPrevious()) {
+            HistoryEntry h = backwardsHistory.previous();
+            switch (h.history.get(0).getEvent()) {
                 case CARD_DISCARDED:
-                    CardDiscarded cd = (CardDiscarded) event;
+                    CardDiscarded cd = (CardDiscarded) h.history.get(0);
                     if (cd.getPlayerId() == player)
                         return cd.getSlotId();
                     break;
                 case CARD_PLAYED:
-                    CardPlayed cp = (CardPlayed) event;
+                    CardPlayed cp = (CardPlayed) h.history.get(0);
                     if (cp.getPlayerId() == player)
                         return cp.getSlotId();
                     break;
@@ -121,15 +134,16 @@ public class ConventionUtils {
             scoresAtPointOfTell.put(colour, state.getTableValue(colour));
         }
         // this tracks any slots that have been drawn since the Tell was received, and hence for which we have no information
-        Iterator<GameEvent> iter = state.getHistory().descendingIterator();
+        List<HistoryEntry> history = state.getActionHistory();
+        ListIterator<HistoryEntry> iter = state.getActionHistory().listIterator(history.size());
         int count = 0;
-        while (iter.hasNext() && count < state.getPlayerCount() * 3) { // heuristic to go back 3 events per player
-            GameEvent lastEvent = iter.next();
-            if (lastEvent instanceof CardInfo) {
-                CardInfo event = (CardInfo) lastEvent;
-                //      int previousPlayer = (player - 1 + state.getPlayerCount()) % state.getPlayerCount();
-                if (event.wasToldTo(player)) {
-                    if (conv.singleTouchIsPlayable && event.getSlots().length == 1) { //&& event.wasToldBy(previousPlayer)) {
+        while (iter.hasPrevious() && count < state.getPlayerCount() * 3) { // heuristic to go back 3 events per player
+            HistoryEntry lastEvent = iter.previous();
+            if (lastEvent.action instanceof TellColour || lastEvent.action instanceof TellValue) {
+                int toldTo = lastEvent.action instanceof TellColour ? ((TellColour) lastEvent.action).player : ((TellValue) lastEvent.action).player;
+                if (toldTo == player) {
+                    CardInfo event = (CardInfo) lastEvent.history.get(0);
+                    if (conv.singleTouchIsPlayable && event.getSlots().length == 1) {
                         // bingo! Only playable cards permitted
                         // so we make sure only cards playable at this point are used
                         for (int slot : event.getSlots()) {
@@ -162,14 +176,14 @@ public class ConventionUtils {
                         }
                     }
                 }
-            } else if (lastEvent instanceof CardDiscarded) {
-                CardDiscarded cd = (CardDiscarded) lastEvent;
+            } else if (lastEvent.action instanceof DiscardCard) {
+                CardDiscarded cd = (CardDiscarded) lastEvent.history.get(0);
                 if (player == cd.getPlayerId()) {
                     slotsDrawn.add(cd.getSlotId());
                     // record that data for this slot is now irrelevant
                 }
-            } else if (lastEvent instanceof CardPlayed) {
-                CardPlayed cp = (CardPlayed) lastEvent;
+            } else if (lastEvent.action instanceof PlayCard) {
+                CardPlayed cp = (CardPlayed) lastEvent.history.get(0);
                 // check that this was a valid play!
                 // which we cannot 100% guarantee...e.g. if we play O1 when current score is O1....
                 if (scoresAtPointOfTell.get(cp.getColour()) == cp.getValue())

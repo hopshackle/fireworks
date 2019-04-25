@@ -2,6 +2,7 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.evalfn;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSRuleInfoSet;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.LegalActionFilter;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.RuleGenerator;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGatherer;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGathererWithTarget;
@@ -72,7 +73,12 @@ public class EvalFnAgent implements Agent {
         }
         // otherwise we calculate a pdf
 
-        double largestValue = actionValues.values().stream().mapToDouble(i -> i).max().getAsDouble();
+        OptionalDouble largestValueOption = actionValues.values().stream().mapToDouble(i -> i).max();
+        if (!largestValueOption.isPresent()) {
+            getAllActionValues(agentID, gameState);
+            throw new AssertionError("No values");
+        }
+        double largestValue = largestValueOption.getAsDouble();
         List<Action> actionsToBeConsidered = actionValues.keySet().stream().collect(Collectors.toList());
         List<Double> temppdf = actionsToBeConsidered.stream()
                 .map(k -> Math.exp((actionValues.get(k) - largestValue) / temperature))
@@ -106,27 +112,13 @@ public class EvalFnAgent implements Agent {
     }
 
     private List<Action> getPossibleActions(int agentID, GameState state) {
-        List<Action> retValue = rules.stream()
+        return rules.stream()
                 .filter(r -> r.canFire(agentID, state))
                 .map(r -> r.execute(agentID, state))
                 .filter(Objects::nonNull)
                 .distinct()
+                .filter(LegalActionFilter.isLegal(agentID, state))
                 .collect(Collectors.toList());
-
-        return retValue.stream().filter(p -> {
-            // this section should use Action.isLegal(). But that is broken for Play and Discard
-            // as it uses hand.getCard() != null, which will always be true for the acting player
-            // when we use the state provided by GameRunsner
-            if (p instanceof PlayCard) {
-                int slot = ((PlayCard) p).slot;
-                return state.getHand(agentID).hasCard(slot);
-            } else if (p instanceof DiscardCard) {
-                int slot = ((DiscardCard) p).slot;
-                return state.getHand(agentID).hasCard(slot) && state.getInfomation() != state.getStartingInfomation();
-            } else {
-                return state.getInfomation() != 0;
-            }
-        }).collect(Collectors.toList());
     }
 
     public static GameState rollForward(Action action, int agentID, GameState state) {
@@ -134,8 +126,7 @@ public class EvalFnAgent implements Agent {
         // we don't roll forward Play or Discard actions, as that introduces determinised info
         // instead we cater for this in the feature representation
         GameState stateCopy = state.getCopy();
-        List<GameEvent> events = action.apply(agentID, stateCopy);
-        events.forEach(stateCopy::addEvent);
+        action.apply(agentID, stateCopy);
         return stateCopy;
     }
 

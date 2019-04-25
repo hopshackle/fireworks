@@ -26,8 +26,8 @@ public class App
 {
 
     private static DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("HH:mm:ss 'on' dd-LLL");
-    private static String stateGatherRules = "1|2|3|4|6|7|8|9|10|11|12|15";
-    private static String stateGatherConventions = "Y";
+    private static String stateGatherRules = "1|2|3|4|5|6|7|8|9|10|11|12|15";
+    private static String stateGatherConventions = "YY";
     public static void main( String[] args )
     {
         String policy = (args.length < 1) ? "outer" : args[0];

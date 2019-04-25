@@ -1,16 +1,14 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.rules;
 
 import com.fossgalaxy.games.fireworks.ai.rule.AbstractTellRule;
-import com.fossgalaxy.games.fireworks.state.Card;
-import com.fossgalaxy.games.fireworks.state.CardColour;
-import com.fossgalaxy.games.fireworks.state.GameState;
-import com.fossgalaxy.games.fireworks.state.Hand;
+import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.Action;
 import com.fossgalaxy.games.fireworks.state.actions.TellColour;
 import com.fossgalaxy.games.fireworks.state.actions.TellValue;
 import com.fossgalaxy.games.fireworks.state.events.*;
 
 import java.util.Iterator;
+import java.util.ListIterator;
 import java.util.stream.IntStream;
 
 /**
@@ -52,12 +50,13 @@ public class TellRedOrangeForPlayableNewCard extends AbstractTellRule {
             boolean hasCardInColour = IntStream.range(0, state.getHandSize()).anyMatch(i -> hand.getCard(i).colour == hintColour);
             if (!hasCardInColour) return false;
 
-            Iterator<GameEvent> backwards = state.getHistory().descendingIterator();
+            ListIterator<HistoryEntry> backwards = state.getActionHistory().listIterator(state.getActionHistory().size());
             boolean finished = false, alreadyHinted = false;
             int count = 0;
-            while (backwards.hasNext() && !finished && count < state.getPlayerCount() * 3) {
+            while (backwards.hasPrevious() && !finished && count < state.getPlayerCount() * 3) {
                 count++;
-                GameEvent event = backwards.next();
+                HistoryEntry h = backwards.previous();
+                GameEvent event = h.history.get(0);
                 switch (event.getEvent()) {
                     case CARD_INFO_COLOUR:
                         CardInfoColour cardColour = (CardInfoColour) event;

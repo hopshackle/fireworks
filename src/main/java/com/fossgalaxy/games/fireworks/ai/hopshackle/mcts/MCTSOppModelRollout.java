@@ -72,14 +72,14 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
             e.printStackTrace();
         }
     }
-
+/*
     @Override
     public void receiveID(int id) {
         lastState = null;
         historyIndex = 0;
         super.receiveID(id);
     }
-
+*/
     @Override
     public Action doMove(int agentID, GameState state) {
         if (lastState == null) {
@@ -92,7 +92,9 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         }
         updatePosteriorModel(state, agentID);
         lastState = state.getCopy();
-        historyIndex = state.getHistory().size();
+        historyIndex = state.getActionHistory().size();
+        if (historyIndex != state.getTurnNumber())
+            throw new AssertionError("Expect these to be the same");
 
         return super.doMove(agentID, state);
     }
@@ -203,10 +205,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
             if (logger.isDebugEnabled())
                 logger.debug("MCTSOpponentModel: Selected action " + action + " for player " + agentAboutToAct);
             if (action != null) {
-                state.tick();
-                //     handDeterminiser.recordAction(action, agent, state);
-                List<GameEvent> events = action.apply(agentAboutToAct, state);
-                events.forEach(state::addEvent);
+                action.apply(agentAboutToAct, state);
                 // we then set the reference state on the node, once the action has actually been executed
                 // this is a fully determinised state
                 if (current.getReferenceState() == null)
@@ -272,17 +271,19 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         // and use them to update last State
         // the lastState is before we took our previous action
         // first of all we have to determinise the active players hand...so that the others have something to go on...
-        for (int i = historyIndex; i < state.getHistory().size(); i++) {
-            GameEvent event = state.getHistory().get(i);
-            int currentPlayer = getPlayerOf(event);
-            // is the player has changed, and is not us (as we do not calculate our own opponent model
-            if (logger.isDebugEnabled()) {
-                logger.debug(String.format("Processing %s at index %d for player %d", event, i, currentPlayer));
+        for (int i = historyIndex; i < state.getActionHistory().size(); i++) {
+            HistoryEntry h = state.getActionHistory().get(i);
+            for (GameEvent event : h.history) {
+                int currentPlayer = getPlayerOf(event);
+                // is the player has changed, and is not us (as we do not calculate our own opponent model
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("Processing %s at index %d for player %d", event, i, currentPlayer));
+                }
+                if (currentPlayer != perspective) {
+                    updateOpponentModel(event, currentPlayer, perspective);
+                }
+                event.apply(lastState, perspective);
             }
-            if (currentPlayer != perspective) {
-                updateOpponentModel(event, currentPlayer, perspective);
-            }
-            event.apply(lastState, perspective);
         }
     }
 
