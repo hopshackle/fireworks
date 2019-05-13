@@ -11,9 +11,9 @@ import java.util.*;
 
 public class RuleFullExpansion extends RuleExpansionPolicy {
 
-    protected Optional<EvalFnAgent> VAgent;
+    protected EvalFnAgent VAgent;
 
-    public RuleFullExpansion(Logger logger, Random random, List<Rule> allRules, Optional<EvalFnAgent> vAgent) {
+    public RuleFullExpansion(Logger logger, Random random, List<Rule> allRules, EvalFnAgent vAgent) {
         super(logger, random, allRules);
         VAgent = vAgent;
     }
@@ -32,7 +32,7 @@ public class RuleFullExpansion extends RuleExpansionPolicy {
         // we then assume that the best move is worth a point, and pro rata the rest
 
         int nextAgentID = (parent.getAgentId() + 1) % state.getPlayerCount();
-        Map<Action, Double> actionValues = VAgent.get().getAllActionValues(nextAgentID, state);
+        Map<Action, Double> actionValues = VAgent.getAllActionValues(nextAgentID, state);
 
         for (Action a : actionValues.keySet()) {
             if (!parent.containsChild(a)) {

@@ -15,7 +15,7 @@ public class MCTSOppModelFE extends MCTSOppModelRollout {
 //        this.roundLength = roundLength;
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit, opponentModelLoc, rules, conventions);
         EvalFnAgent evalFn = new EvalFnAgent(valueFnLoc, 0.0, rules, conventions);
-        expansionPolicy = new RuleFullExpansionOpponentModel(logger, random, allRules, Optional.of(evalFn));
+        expansionPolicy = new RuleFullExpansionOpponentModel(logger, random, allRules, evalFn);
     }
 
 

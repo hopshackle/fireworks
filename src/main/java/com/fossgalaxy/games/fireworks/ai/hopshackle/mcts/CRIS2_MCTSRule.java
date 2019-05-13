@@ -18,7 +18,7 @@ public class CRIS2_MCTSRule extends CRIS2_MCTS {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit, conventions, rollout);
         allRules = RuleGenerator.generateRules(rules, conventions);
         if (rollout instanceof EvalFnAgent)
-            expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.of((EvalFnAgent) rollout));
+            expansionPolicy = new RuleFullExpansion(logger, random, allRules, (EvalFnAgent) rollout);
         else
             expansionPolicy = new RuleExpansionPolicy(logger, random, allRules);
     }

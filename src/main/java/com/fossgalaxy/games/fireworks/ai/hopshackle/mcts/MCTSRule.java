@@ -20,7 +20,7 @@ public class MCTSRule extends MCTS {
         allRules = RuleGenerator.generateRules(rules, conventions);
         rolloutPolicy = rollout == null ? new RandomEqual(0) : rollout;
         if (rollout instanceof EvalFnAgent)
-            expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.of((EvalFnAgent) rollout));
+            expansionPolicy = new RuleFullExpansion(logger, random, allRules, (EvalFnAgent) rollout);
         else
             expansionPolicy = new RuleExpansionPolicy(logger, random, allRules);
 

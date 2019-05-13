@@ -13,7 +13,7 @@ public class RuleFullExpansionOpponentModel extends RuleFullExpansion {
     /*
     The only difference is that all the MCTSNodes are from the perspective of the same agent
      */
-    public RuleFullExpansionOpponentModel(Logger logger, Random random, List<Rule> allRules, Optional<EvalFnAgent> vAgent) {
+    public RuleFullExpansionOpponentModel(Logger logger, Random random, List<Rule> allRules, EvalFnAgent vAgent) {
         super(logger, random, allRules, vAgent);
     }
 

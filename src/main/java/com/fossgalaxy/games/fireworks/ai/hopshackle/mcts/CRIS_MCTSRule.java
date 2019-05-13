@@ -20,7 +20,7 @@ public class CRIS_MCTSRule extends CRIS_MCTS {
         allRules = RuleGenerator.generateRules(rules, conventions);
         // TODO: Parameterise this more elegantly in future
         if (rollout instanceof EvalFnAgent)
-            expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.of((EvalFnAgent) rollout));
+            expansionPolicy = new RuleFullExpansion(logger, random, allRules, (EvalFnAgent) rollout);
         else
             expansionPolicy = new RuleExpansionPolicy(logger, random, allRules);
     }

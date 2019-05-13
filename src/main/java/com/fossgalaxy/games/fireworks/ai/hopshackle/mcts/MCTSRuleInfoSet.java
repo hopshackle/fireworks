@@ -21,7 +21,7 @@ public class MCTSRuleInfoSet extends MCTSInfoSet {
         super(explorationC, rolloutDepth, treeDepthMul, timeLimit, conventions, rollout);
         allRules = RuleGenerator.generateRules(ruleMnemonics, conventions);
         if (rollout instanceof EvalFnAgent)
-            expansionPolicy = new RuleFullExpansion(logger, random, allRules, Optional.of((EvalFnAgent) rollout));
+            expansionPolicy = new RuleFullExpansion(logger, random, allRules, (EvalFnAgent) rollout);
         else
             expansionPolicy = new RuleExpansionPolicy(logger, random, allRules);
     }
