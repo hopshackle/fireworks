@@ -111,10 +111,11 @@ public class MCTSNode {
         return children;
     }
 
-    public void backup(double score, MCTSNode triggerNode, MCTSNode stopNode) {
+    public void backup(double originalScore, MCTSNode triggerNode, MCTSNode stopNode) {
         MCTSNode current = this;
         int iterations = 0;
         MCTSNode last = null;
+        double score = originalScore;
         while (current != null) {
             if (stopNode != null && stopNode == current) {
                 current = null;
@@ -129,6 +130,10 @@ public class MCTSNode {
                 }
                 iterations++;
                 current.visits++;
+         /*       if (current.getBestNode() != null) {
+                    double nodeScore = current.getBestNode().getMeanScore(); // expected score if we had taken the best action from this state
+                    score = nodeScore; // and we interpolate towards that
+                } */
             }
             last = current;
             current = current.parent;

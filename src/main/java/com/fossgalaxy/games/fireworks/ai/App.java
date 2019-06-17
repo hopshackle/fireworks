@@ -47,6 +47,7 @@ public class App
         StatsSummary scoreSummary = new BasicStats();
         StatsSummary timeSummary = new BasicStats();
         StatsCollator.clear();
+        int[] livesLeft = new int[4];
 
         for (int i=0; i<numGames; i++) {
             //         System.out.println("Game " + i + " starting");
@@ -109,17 +110,19 @@ public class App
             GameStats stats = runner.playGame(random.nextLong());
             scoreSummary.add(stats.score);
             timeSummary.add((double) stats.time / (double) stats.moves);
-            System.out.println(String.format("Game %3d finished with score of %2d and %.0f ms per move", i, stats.score, (double) stats.time / stats.moves));
+            livesLeft[stats.lives]++;
+            System.out.println(String.format("Game %3d finished with score of %2d, %1d lives and %.0f ms per move", i, stats.score, stats.lives, (double) stats.time / stats.moves));
         }
 
         //print out the stats
-        System.out.println(String.format("%s: Score Avg: %.2f, min: %.0f, max: %.0f, std err: %.2f, Time per move: %.1f ms",
+        System.out.println(String.format("%s: Score Avg: %.2f, min: %.0f, max: %.0f, std err: %.2f, Time per move: %.1f ms, LivesLeft: %d, %d, %d, %d",
                 agentDescriptor,
                 scoreSummary.getMean(),
                 scoreSummary.getMin(),
                 scoreSummary.getMax(),
                 scoreSummary.getStdErr(),
-                timeSummary.getMean()));
+                timeSummary.getMean(),
+                livesLeft[0], livesLeft[1], livesLeft[2], livesLeft[3]));
 
         Map<String, Double> universeStats = new HashMap<>();
         universeStats.put("UNIVERSE_SHIFT_TOTAL", HandDeterminiser.percentageUniverseShiftOfTotal());
