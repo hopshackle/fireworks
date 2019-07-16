@@ -33,7 +33,7 @@ public class RandomPlayerApp {
         StatsSummary scoreSummary = new BasicStats();
         StatsSummary timeSummary = new BasicStats();
         StatsCollator.clear();
-        String rules = "";
+        String rules = "1|2|3|4|5|6|7|8|9|10|12|15";
         String conventions = "";
 
         for (int i = 0; i < numGames; i++) {

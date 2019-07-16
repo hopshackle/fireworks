@@ -46,9 +46,9 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         opponentModelFullList.add(BoardGameGeekFactory.buildRiskyPlayer(0.7));
         opponentModelFullList.add(VanDenBerghFactory.buildAgent());
         opponentModelFullList.add(new EvalFnAgent("RESPlayers_5.params", 0.0,
-                "1|2|3|4|6|7|8|9|10|11|12|15", ""));
+                "1|2|3|4|6|7|8|9|10|11|12|15", "NN"));
         opponentModelFullList.add(new EvalFnAgent("RESPlayers_5.params", 0.0,
-                "1|2|3|4|6|7|8|9|10|11|12|15", ""));
+                "1|2|3|4|6|7|8|9|10|11|12|15", "YN"));
         opponentModelFullList.add(IGGIFactory.buildIGGI2Player());
         opponentModelFullList.add(OsawaFactory.buildOuterState());
     }
@@ -175,7 +175,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
                     action = new DiscardCard(0);
                 }
             } else {
-                if (current.fullyExpanded(state)) {
+                if (current.fullyExpanded(state, agentAboutToAct)) {
                     next = current.getUCTNode(state, false);
                 } else {
                     next = expand(current, state);
@@ -255,8 +255,14 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         if (event instanceof CardInfo) {
             return ((CardInfo) event).getPerformer();
         }
-        if (event instanceof CardPlayed || event instanceof CardDiscarded || event instanceof CardDrawn) {
-            return Integer.valueOf(event.toString().substring(7, 8));
+        if ( event instanceof CardDrawn) {
+            return ((CardDrawn) event).getPlayerId();
+        }
+        if (event instanceof CardDiscarded) {
+            return ((CardDiscarded) event).getPlayerId();
+        }
+        if (event instanceof CardPlayed) {
+            return ((CardPlayed) event).getPlayerId();
         }
         if (event instanceof CardReceived) {
             return ((CardReceived) event).getPlayerId();

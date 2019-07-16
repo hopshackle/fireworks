@@ -33,8 +33,8 @@ public class GameRunnerWithRandomAgents extends GameRunner {
             "piers",
             "risky2[0.7]",
             "vdb-paper",
-            "evalFn[RESPlayers_5.params:0.0:true]",
-            "evalFn[RESPlayers_5.params:0.0:false]",
+            "evalFn[RESPlayers_5.params:0:1|2|3|4|5|6|7|8|9|10|12|15:NN]",
+            "evalFn[RESPlayers_5.params:0:1|2|3|4|5|6|7|8|9|10|12|15:YN]",
             "iggi2",
             "outer"
     };
@@ -53,8 +53,10 @@ public class GameRunnerWithRandomAgents extends GameRunner {
      */
     public GameRunnerWithRandomAgents(String gameID, int expectedPlayers, String rules, String conventions) {
         this(gameID, new BasicState(HAND_SIZE[expectedPlayers], expectedPlayers));
-        rulesToTrack = RuleGenerator.generateRules(rules, conventions);
-        stateGatherer = new StateGathererWithTarget(rules, conventions);
+        rulesToTrack = RuleGenerator.generateRules(rules, "");
+        // TODO: Can then add on rules with convention of next play!
+        stateGatherer = new StateGathererWithTarget(rules, "");
+        // TODO: And then have an additional StateGatherer for conventional play
     }
 
     private GameRunnerWithRandomAgents(String gameID, GameState state) {
@@ -111,6 +113,7 @@ public class GameRunnerWithRandomAgents extends GameRunner {
         GameState playerState = ((HopshackleAgentPlayer) player).getGameState();
         Map<String, Double> features = stateGatherer.extractFeatures(playerState, nextPlayer);
         List<Rule> rulesTriggered = getRulesThatTriggered(rulesToTrack, action, playerState, nextPlayer);
+        // TODO: Once using conventions, will need to append this lot together
 
         for (Rule r : rulesTriggered) {
             features.put(r.getClass().getSimpleName(), 1.00);
@@ -130,7 +133,8 @@ public class GameRunnerWithRandomAgents extends GameRunner {
         //perform the action and get the effects
         logger.info("player {} made move {} as turn {}", nextPlayer, action, moves);
         moves++;
-        action.apply(nextPlayer, state);
+        Collection<GameEvent> events = action.apply(nextPlayer, state);
+        notifyAction(nextPlayer, action, events);
 
         //make sure it's the next player's turn
         nextPlayer = (nextPlayer + 1) % players.length;
