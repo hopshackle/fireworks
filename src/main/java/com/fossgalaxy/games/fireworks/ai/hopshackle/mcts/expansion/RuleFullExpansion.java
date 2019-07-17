@@ -31,7 +31,7 @@ public class RuleFullExpansion extends RuleExpansionPolicy {
         // which is a bit of a hack...but...
         // we then assume that the best move is worth a point, and pro rata the rest
 
-        int nextAgentID = (parent.getAgentId() + 1) % state.getPlayerCount();
+        int nextAgentID = parent.singleAgentTree ? parent.getAgentId() : (parent.getAgentId() + 1) % state.getPlayerCount();
         Map<Action, Double> actionValues = VAgent.getAllActionValues(nextAgentID, state);
 
         for (Action a : actionValues.keySet()) {

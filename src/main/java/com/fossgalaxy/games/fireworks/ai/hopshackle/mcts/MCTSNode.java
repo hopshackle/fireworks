@@ -33,7 +33,8 @@ public class MCTSNode {
     private final long uniqueID = idFountain.getAndIncrement();
     private GameState referenceState;
     protected final Action moveToState;
-    protected final int agentId;
+    protected int agentId;
+    public boolean singleAgentTree;
     protected final MCTSNode parent;
     protected final List<MCTSNode> children;
     protected final Collection<Action> allUnexpandedActions;
@@ -77,6 +78,8 @@ public class MCTSNode {
         this.expConst = expConst;
         this.parent = parent;
         this.agentId = agentId;
+        if (parent != null)
+            this.singleAgentTree = parent.singleAgentTree;
         this.moveToState = moveToState;
         this.score = initialScore * initialVisits;
         this.visits = initialVisits;
@@ -177,7 +180,8 @@ public class MCTSNode {
             if (LegalActionFilter.isLegal(child.agentId, state).test(child.moveToState))
                 incrementParentVisit(child.moveToState);
         }
-        for (Action unexpandedAction : getLegalUnexpandedMoves(state, (getAgentId() + 1) % state.getPlayerCount())) {
+        int agentActing = singleAgentTree ? getAgentId() : (getAgentId() + 1) % state.getPlayerCount();
+        for (Action unexpandedAction : getLegalUnexpandedMoves(state, agentActing)) {
             incrementParentVisit(unexpandedAction);
             // we still need to increment the count for this, even though it is not yet expanded
         }
@@ -240,7 +244,7 @@ public class MCTSNode {
     }
 
     public boolean fullyExpanded(GameState state) {
-        return fullyExpanded(state, (agentId + 1) % state.getPlayerCount());
+        return fullyExpanded(state, singleAgentTree ? agentId : (agentId + 1) % state.getPlayerCount());
     }
 
     public boolean fullyExpanded(GameState state, int nextId) {

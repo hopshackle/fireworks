@@ -103,6 +103,8 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
     public void executeSearch(int agentID, MCTSNode root, GameState state, int movesLeft) {
         long finishTime = System.currentTimeMillis() + timeLimit;
 
+        root.agentId = agentID;
+        root.singleAgentTree = true;
         while (System.currentTimeMillis() < finishTime || rollouts == 0) {
             // we sample opponent models to use each time we restart from root
             opponentModels = sampleOpponentModels();
@@ -133,7 +135,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         MCTSNode current = root;
         int treeDepth = calculateTreeDepthLimit(state);
         nodeExpanded = false;
-        int rootPlayer = (root.agentId + 1) % state.getPlayerCount();
+        int rootPlayer =  root.agentId; // (root.agentId + 1) % state.getPlayerCount();
         int agentAboutToAct = rootPlayer;
 
         while (!state.isGameOver() && current.getDepth() < treeDepth && !nodeExpanded && movesLeft > 0) {
@@ -167,6 +169,9 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
 
             Action action = null;
             if (agentAboutToAct != rootPlayer) {
+                // note that we do not use the tree for the other players
+                // neither for choosing an action, nor for recording their action
+                // so all nodes in the tree are from the rootPlayer perspective only
                 try {
                     action = opponentModels.get(agentAboutToAct).doMove(agentAboutToAct, state);
                 } catch (IllegalStateException e) {
@@ -175,7 +180,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
                     action = new DiscardCard(0);
                 }
             } else {
-                if (current.fullyExpanded(state, agentAboutToAct)) {
+                if (current.fullyExpanded(state)) {
                     next = current.getUCTNode(state, false);
                 } else {
                     next = expand(current, state);
