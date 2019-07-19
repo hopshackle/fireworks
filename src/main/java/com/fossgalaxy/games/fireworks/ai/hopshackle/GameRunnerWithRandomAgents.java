@@ -39,11 +39,13 @@ public class GameRunnerWithRandomAgents extends GameRunner {
             "outer"
     };
 
+
     protected Agent[] agents = new Agent[agentDescriptors.length];
     private Random rnd = new Random();
     private int[] agentIndicesByPlayer;
-    private List<Rule> rulesToTrack;
-    private StateGathererWithTarget stateGatherer;
+    private List<Rule> rulesToTrackBase, rulesToTrackConv;
+    private StateGathererWithTarget stateGathererBase, stateGathererConv;
+    public List<String> allFeatures = new ArrayList();
 
     /**
      * Create a game runner with a given ID and number of players.
@@ -51,12 +53,21 @@ public class GameRunnerWithRandomAgents extends GameRunner {
      * @param gameID          the ID of the game
      * @param expectedPlayers the number of players we expect to be playing.
      */
-    public GameRunnerWithRandomAgents(String gameID, int expectedPlayers, String rules, String conventions) {
+    public GameRunnerWithRandomAgents(String gameID, int expectedPlayers) {
         this(gameID, new BasicState(HAND_SIZE[expectedPlayers], expectedPlayers));
-        rulesToTrack = RuleGenerator.generateRules(rules, "");
-        // TODO: Can then add on rules with convention of next play!
-        stateGatherer = new StateGathererWithTarget(rules, "");
-        // TODO: And then have an additional StateGatherer for conventional play
+        rulesToTrackBase = RuleGenerator.generateRules("2|3|4|6|7|8|9|12|13|15", "NN");
+        rulesToTrackConv = RuleGenerator.generateRules("1|2|3|4|9|12|13|15", "YN");
+        stateGathererBase = new StateGathererWithTarget("2|3|4|6|7|8|9|12|13|15", "NN");
+        stateGathererConv = new StateGathererWithTarget("1|2|3|4|9|12|13|15", "YN");
+        allFeatures.addAll(StateGatherer.allFeatures);
+        allFeatures.addAll(rulesToTrackBase.stream()
+                .map(r -> r.getClass().getSimpleName())
+                .collect(Collectors.toList()));
+        allFeatures.addAll(rulesToTrackConv.stream()
+                .map(r -> r.getClass().getSimpleName())
+                .filter(name -> !allFeatures.contains(name))
+                .collect(Collectors.toList()));
+
     }
 
     private GameRunnerWithRandomAgents(String gameID, GameState state) {
@@ -111,19 +122,23 @@ public class GameRunnerWithRandomAgents extends GameRunner {
 
         // store this as a datapoint
         GameState playerState = ((HopshackleAgentPlayer) player).getGameState();
-        Map<String, Double> features = stateGatherer.extractFeatures(playerState, nextPlayer);
-        List<Rule> rulesTriggered = getRulesThatTriggered(rulesToTrack, action, playerState, nextPlayer);
-        // TODO: Once using conventions, will need to append this lot together
+        Map<String, Double> features = stateGathererBase.extractFeatures(playerState, nextPlayer);
+        Map<String, Double> featuresConv = stateGathererConv.extractFeatures(playerState, nextPlayer);
+        List<Rule> rulesTriggeredBase = getRulesThatTriggered(rulesToTrackBase, action, playerState, nextPlayer);
+        List<Rule> rulesTriggeredConv = getRulesThatTriggered(rulesToTrackConv, action, playerState, nextPlayer);
 
-        for (Rule r : rulesTriggered) {
-            features.put(r.getClass().getSimpleName(), 1.00);
+        for (Rule r : rulesToTrackBase) {
+            features.put(r.getClass().getSimpleName(), rulesTriggeredBase.contains(r) ? 1.00 : 0.00);
+        }
+        for (Rule r : rulesToTrackConv) {
+            featuresConv.put(r.getClass().getSimpleName(), rulesTriggeredConv.contains(r) ? 1.00 : 0.00);
         }
         if (action instanceof PlayCard) features.put("PLAY_CARD", 1.00);
         if (action instanceof DiscardCard) features.put("DISCARD_CARD", 1.00);
 
         try {
             FileWriter writerCSV = new FileWriter("hanabi/OpponentData.csv", true);
-            String csvLine = asCSVLineWithTargets(features, features, agentIndicesByPlayer[nextPlayer]);
+            String csvLine = asCSVLineWithTargets(features, featuresConv, agentIndicesByPlayer[nextPlayer]);
             writerCSV.write(csvLine + "\n");
             writerCSV.close();
         } catch (Exception e) {
@@ -151,12 +166,12 @@ public class GameRunnerWithRandomAgents extends GameRunner {
     }
 
     protected String asCSVLine(Map<String, Double> tuple, Map<String, Double> tuple2) {
-        return StateGatherer.allFeatures.stream()
+        return allFeatures.stream()
                 .map(k -> tuple.getOrDefault(k, 0.00))
                 .map(d -> String.format("%.3f", d))
                 .collect(Collectors.joining("\t"))
                 + "\t" +
-                StateGatherer.allFeatures.stream()
+                allFeatures.stream()
                         .map(k -> tuple2.getOrDefault(k, 0.00))
                         .map(d -> String.format("%.3f", d))
                         .collect(Collectors.joining("\t"));
@@ -164,14 +179,10 @@ public class GameRunnerWithRandomAgents extends GameRunner {
 
     protected String asCSVLineWithTargets(Map<String, Double> tuple, Map<String, Double> tuple2, int agentType) {
         String featureString = asCSVLine(tuple, tuple2);
-        String ruleString = stateGatherer.allTargets.stream()
-                .map(k -> tuple.getOrDefault(k, 0.0))
-                .map(d -> String.format("%.3f", d))
-                .collect(Collectors.joining("\t"));
         String targetString = IntStream.range(0, agentDescriptors.length)
                 .mapToObj(i -> i == agentType ? "1" : "0")
                 .collect(Collectors.joining("\t"));
-        return targetString + "\t" + ruleString + "\t" + featureString;
+        return targetString + "\t" + featureString;
     }
 
 }

@@ -33,13 +33,11 @@ public class RandomPlayerApp {
         StatsSummary scoreSummary = new BasicStats();
         StatsSummary timeSummary = new BasicStats();
         StatsCollator.clear();
-        String rules = "1|2|3|4|5|6|7|8|9|10|12|15";
-        String conventions = "";
 
         for (int i = 0; i < numGames; i++) {
             //         System.out.println("Game " + i + " starting");
             int numPlayers = random.nextInt(4) + 2;
-            GameRunnerWithRandomAgents runner = new GameRunnerWithRandomAgents("test-game", numPlayers, rules, conventions);
+            GameRunnerWithRandomAgents runner = new GameRunnerWithRandomAgents("test-game", numPlayers);
 
             int overridePlayerNumber = agentDescriptor.equals("") ? -1 : random.nextInt(numPlayers);
             //add your agents to the game

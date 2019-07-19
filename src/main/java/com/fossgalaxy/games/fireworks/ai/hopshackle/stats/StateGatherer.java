@@ -55,6 +55,7 @@ public abstract class StateGatherer {
     protected String fileLocation = "hanabi";
     protected Conventions conventions;
 
+
     public StateGatherer(String rules, String conventionString) {
         allRules = RuleGenerator.generateRules(rules, conventionString);
         allTargets = new ArrayList<>();
@@ -290,24 +291,6 @@ public abstract class StateGatherer {
         }
     }
 
-    private int numberOfSuitsWithDiscardedFive(GameState state) {
-        int retValue = 0;
-        for (Card c : state.getDiscards()) {
-            if (c.value == 5) retValue++;
-        }
-        return retValue;
-    }
-
-    private int numberOfSuitsWithDiscardedFour(GameState state) {
-        Map<CardColour, Integer> tracker = new HashMap();
-        for (Card c : state.getDiscards()) {
-            if (c.value == 4) {
-                tracker.put(c.colour, tracker.getOrDefault(c.colour, 0) + 1);
-            }
-        }
-        return (int) tracker.values().stream().filter(i -> i == 2).count();
-    }
-
     protected String asCSVLine(Map<String, Double> tuple) {
         return allFeatures.stream()
                 .map(k -> tuple.getOrDefault(k, 0.00))
@@ -324,30 +307,6 @@ public abstract class StateGatherer {
                 })
                 .count();
         return (int) retValue;
-    }
-
-    /*
-    Returns the number of Moves Left, based on being called just before playerID takes their turn
-*/
-    public static int movesLeft(GameState state, int playerID) {
-        if (state.getDeck().getCardsLeft() - cardsNotInHandThatAreInDeck(state, playerID) > 0)
-            return state.getPlayerCount();
-        List<HistoryEntry> history = state.getActionHistory();
-        for (int i = history.size() - 1; i >= 0; i--) {
-            HistoryEntry h = history.get(i);
-            for (GameEvent e : h.history) {
-                if (e instanceof CardReceived || e instanceof CardDrawn) {
-                    int playerWhoDrew = e instanceof CardReceived ? ((CardReceived) e).getPlayerId() : ((CardDrawn) e).getPlayerId();
-                    if (playerWhoDrew == playerID)
-                        return 1;
-                    // in this case, we drew the last card, so this is our last move
-
-                    // if the next player, then everyone has a turn left
-                    return (state.getPlayerCount() - playerID + playerWhoDrew) % state.getPlayerCount() + 1;
-                }
-            }
-        }
-        throw new AssertionError("Should not be able to reach this");
     }
 
     private double informationForPlayer(GameState state, int playerID) {

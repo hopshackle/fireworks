@@ -364,6 +364,8 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
     }
 
     protected double[] featureData(GameEvent event, GameState state, int playerID) {
+        // TODO: Need to bring this into line with the StateGathererWithTargets
+
         Map<String, Double> features = stateGatherer.extractFeatures(state, playerID);
         Map<String, Double> featuresBase = stateGatherer.extractFeatures(state, playerID);
         List<Rule> rulesTriggered = GameRunnerWithRandomAgents.getRulesThatTriggered(allRules, getActionFromEvent(event), state, playerID);
