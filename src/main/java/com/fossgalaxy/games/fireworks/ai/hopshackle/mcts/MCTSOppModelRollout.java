@@ -2,15 +2,11 @@ package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts;
 
 import com.fossgalaxy.games.fireworks.ai.Agent;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.*;
-import com.fossgalaxy.games.fireworks.ai.hopshackle.evalfn.EvalFnAgent;
-import com.fossgalaxy.games.fireworks.ai.hopshackle.evalfn.HopshackleNN;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.evalfn.*;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.determinize.HandDeterminiser;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.RuleExpansionPolicyOpponentModel;
-import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.BoardGameGeekFactory;
-import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.RuleGenerator;
-import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGatherer;
-import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGathererFullTree;
-import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StateGathererWithTarget;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.rules.*;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.*;
 import com.fossgalaxy.games.fireworks.ai.iggi.IGGIFactory;
 import com.fossgalaxy.games.fireworks.ai.osawa.OsawaFactory;
 import com.fossgalaxy.games.fireworks.ai.rule.Rule;
@@ -19,11 +15,11 @@ import com.fossgalaxy.games.fireworks.annotations.AgentConstructor;
 import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.*;
 import com.fossgalaxy.games.fireworks.state.events.*;
-import com.fossgalaxy.games.fireworks.utils.DebugUtils;
-
+import com.fossgalaxy.games.fireworks.utils.*;
 import java.io.FileInputStream;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class MCTSOppModelRollout extends MCTSRuleInfoSet {
 
@@ -32,12 +28,12 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
     protected int historyIndex = 0;
     protected HopshackleNN brain;
     protected Random rnd = new Random();
-    protected List<Agent> opponentModelFullList = new ArrayList<>();
+    protected static List<Agent> opponentModelFullList = Arrays.stream(GameRunnerWithRandomAgents.agentDescriptors)
+            .map( desc -> AgentUtils.buildAgent(desc)).collect(Collectors.toList());
     protected List<Agent> opponentModels;
-    protected StateGatherer stateGatherer;
-
 
     {
+/*
         opponentModelFullList.add(BoardGameGeekFactory.buildCliveJ());
         opponentModelFullList.add(IGGIFactory.buildRandom());
         opponentModelFullList.add(IGGIFactory.buildCautious());
@@ -51,14 +47,17 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
                 "1|2|3|4|6|7|8|9|10|11|12|15", "YN"));
         opponentModelFullList.add(IGGIFactory.buildIGGI2Player());
         opponentModelFullList.add(OsawaFactory.buildOuterState());
+        */
     }
 
     @AgentConstructor("mctsOpponentModel")
-    public MCTSOppModelRollout(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String modelLocation, String rules, String conventions) {
+    public MCTSOppModelRollout(double explorationC, int rolloutDepth, int treeDepthMul, int timeLimit, String modelLocation) {
 //        this.roundLength = roundLength;
-        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, rules, conventions, null);
+        super(explorationC, rolloutDepth, treeDepthMul, timeLimit, "", "", null);
+        allRules = new ArrayList();
+        allRules.addAll(GameRunnerWithRandomAgents.rulesToTrackBase);
+        allRules.addAll(GameRunnerWithRandomAgents.rulesToTrackConv);
         expansionPolicy = new RuleExpansionPolicyOpponentModel(logger, random, allRules);
-        stateGatherer = new StateGathererWithTarget(rules, conventions);
         try {
             if (modelLocation.startsWith("RES")) {
                 modelLocation = modelLocation.substring(3);
@@ -364,31 +363,34 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
     }
 
     protected double[] featureData(GameEvent event, GameState state, int playerID) {
-        // TODO: Need to bring this into line with the StateGathererWithTargets
 
-        Map<String, Double> features = stateGatherer.extractFeatures(state, playerID);
-        Map<String, Double> featuresBase = stateGatherer.extractFeatures(state, playerID);
-        List<Rule> rulesTriggered = GameRunnerWithRandomAgents.getRulesThatTriggered(allRules, getActionFromEvent(event), state, playerID);
+        // store this as a datapoint
+        Map<String, Double> features = GameRunnerWithRandomAgents.stateGathererBase.extractFeatures(state, playerID);
+        Map<String, Double> featuresConv = GameRunnerWithRandomAgents.stateGathererConv.extractFeatures(state, playerID);
+        List<Rule> rulesTriggeredBase = GameRunnerWithRandomAgents.getRulesThatTriggered(GameRunnerWithRandomAgents.rulesToTrackBase, getActionFromEvent(event), state, playerID);
+        List<Rule> rulesTriggeredConv = GameRunnerWithRandomAgents.getRulesThatTriggered(GameRunnerWithRandomAgents.rulesToTrackConv, getActionFromEvent(event), state, playerID);
 
-        for (Rule r : rulesTriggered) {
-            features.put(r.getClass().getSimpleName(), 1.00);
+        for (Rule r : GameRunnerWithRandomAgents.rulesToTrackBase) {
+            features.put(r.getClass().getSimpleName(), rulesTriggeredBase.contains(r) ? 1.00 : 0.00);
+        }
+        for (Rule r : GameRunnerWithRandomAgents.rulesToTrackConv) {
+            featuresConv.put(r.getClass().getSimpleName(), rulesTriggeredConv.contains(r) ? 1.00 : 0.00);
         }
         if (event instanceof CardPlayed) features.put("PLAY_CARD", 1.00);
         if (event instanceof CardDiscarded) features.put("DISCARD_CARD", 1.00);
-        List<Double> features1 = stateGatherer.allFeatures.stream()
+
+        List<Double> features1 = GameRunnerWithRandomAgents.allFeatures.stream()
                 .map(k -> features.getOrDefault(k, 0.00))
                 .collect(Collectors.toList());
-        List<Double> features2 = stateGatherer.allFeatures.stream()
-                .map(k -> featuresBase.getOrDefault(k, 0.00))
+        List<Double> featuresConv1 = GameRunnerWithRandomAgents.allFeatures.stream()
+                .map(k -> featuresConv.getOrDefault(k, 0.00))
                 .collect(Collectors.toList());
-        List<Double> features3 = stateGatherer.allTargets.stream()
-                .map(k -> features.getOrDefault(k, 0.0))
-                .collect(Collectors.toList());
-        features3.addAll(features1);
-        features3.addAll(features2);
-        double[] retValue = new double[features3.size()];
-        for (int i = 0; i < features3.size(); i++) {
-            retValue[i] = features3.get(i);
+        List<Double> finalFeatures = new ArrayList<>();
+        finalFeatures.addAll(features1);
+        finalFeatures.addAll(featuresConv1);
+        double[] retValue = new double[finalFeatures.size()];
+        for (int i = 0; i < finalFeatures.size(); i++) {
+            retValue[i] = finalFeatures.get(i);
         }
         return retValue;
     }

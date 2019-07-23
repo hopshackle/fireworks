@@ -1,6 +1,7 @@
 package com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion;
 
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSNode;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSRuleNode;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.expansion.ExpansionPolicy;
 import com.fossgalaxy.games.fireworks.ai.iggi.Utils;
 import com.fossgalaxy.games.fireworks.state.CardColour;
@@ -67,7 +68,7 @@ public class SimpleNodeExpansion implements ExpansionPolicy {
 
     @Override
     public MCTSNode expand(MCTSNode parent, GameState state) {
-        int nextAgentID = (parent.getAgentId() + 1) % state.getPlayerCount();
+        int nextAgentID = parent.singleAgentTree ? parent.getAgentId() :(parent.getAgentId() + 1) % state.getPlayerCount();
         Action action = selectActionForExpand(state, parent, nextAgentID);
         // It is possible it wasn't allowed
         if (action == null) {

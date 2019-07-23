@@ -33,8 +33,8 @@ public class GameRunnerWithRandomAgents extends GameRunner {
             "piers",
             "risky2[0.7]",
             "vdb-paper",
-            "evalFn[RESPlayers_5.params:0:1|2|3|4|5|6|7|8|9|10|12|15:NN]",
-            "evalFn[RESPlayers_5.params:0:1|2|3|4|5|6|7|8|9|10|12|15:YN]",
+            "evalFn[RESPlayers_5.params:0:1|2|3|4|6|7|8|9|10|12|15:NN]",
+            "evalFn[RESPlayers_5.params:0:1|2|3|4|6|7|8|9|10|12|15:YN]",
             "iggi2",
             "outer"
     };
@@ -43,9 +43,22 @@ public class GameRunnerWithRandomAgents extends GameRunner {
     protected Agent[] agents = new Agent[agentDescriptors.length];
     private Random rnd = new Random();
     private int[] agentIndicesByPlayer;
-    private List<Rule> rulesToTrackBase, rulesToTrackConv;
-    private StateGathererWithTarget stateGathererBase, stateGathererConv;
-    public List<String> allFeatures = new ArrayList();
+    public static List<Rule> rulesToTrackBase = RuleGenerator.generateRules("2|3|4|6|7|8|9|12|13|15", "NN");
+    public static List<Rule> rulesToTrackConv = RuleGenerator.generateRules("1|2|3|4|9|12|13|15", "YN");
+    public static StateGathererWithTarget stateGathererBase = new StateGathererWithTarget("2|3|4|6|7|8|9|12|13|15", "NN");
+    public static StateGathererWithTarget stateGathererConv  = new StateGathererWithTarget("1|2|3|4|9|12|13|15", "YN");
+    public static List<String> allFeatures = new ArrayList();
+
+    static {
+        allFeatures.addAll(StateGatherer.allFeatures);
+        allFeatures.addAll(rulesToTrackBase.stream()
+                .map(r -> r.getClass().getSimpleName())
+                .collect(Collectors.toList()));
+        allFeatures.addAll(rulesToTrackConv.stream()
+                .map(r -> r.getClass().getSimpleName())
+                .filter(name -> !allFeatures.contains(name))
+                .collect(Collectors.toList()));
+    }
 
     /**
      * Create a game runner with a given ID and number of players.
@@ -55,19 +68,6 @@ public class GameRunnerWithRandomAgents extends GameRunner {
      */
     public GameRunnerWithRandomAgents(String gameID, int expectedPlayers) {
         this(gameID, new BasicState(HAND_SIZE[expectedPlayers], expectedPlayers));
-        rulesToTrackBase = RuleGenerator.generateRules("2|3|4|6|7|8|9|12|13|15", "NN");
-        rulesToTrackConv = RuleGenerator.generateRules("1|2|3|4|9|12|13|15", "YN");
-        stateGathererBase = new StateGathererWithTarget("2|3|4|6|7|8|9|12|13|15", "NN");
-        stateGathererConv = new StateGathererWithTarget("1|2|3|4|9|12|13|15", "YN");
-        allFeatures.addAll(StateGatherer.allFeatures);
-        allFeatures.addAll(rulesToTrackBase.stream()
-                .map(r -> r.getClass().getSimpleName())
-                .collect(Collectors.toList()));
-        allFeatures.addAll(rulesToTrackConv.stream()
-                .map(r -> r.getClass().getSimpleName())
-                .filter(name -> !allFeatures.contains(name))
-                .collect(Collectors.toList()));
-
     }
 
     private GameRunnerWithRandomAgents(String gameID, GameState state) {

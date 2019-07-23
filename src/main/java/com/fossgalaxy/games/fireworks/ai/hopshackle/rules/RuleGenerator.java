@@ -8,6 +8,7 @@ public class RuleGenerator {
 
     public static List<Rule> generateRules(String ruleMnemonics, String conventionString) {
         List<Rule> retValue = new ArrayList<>();
+        if (ruleMnemonics.equals("")) return new ArrayList<>();
         Conventions conventions = new Conventions(conventionString);
         String[] ruleArray = ruleMnemonics.split("[|]");
         for (String mnemonic : ruleArray) {
@@ -63,6 +64,9 @@ public class RuleGenerator {
                     break;
                 case 17:
                     retValue.add(new PlaySafestCardIfNoDiscardPossible(conventions));
+                    break;
+                case 18:
+                    retValue.add(new PlayDefinitelySafeCard(conventions));
                     break;
                 default:
                     throw new AssertionError("Mnemonic for rule does not exist: " + mnemonic);

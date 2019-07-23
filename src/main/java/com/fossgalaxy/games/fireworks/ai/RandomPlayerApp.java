@@ -20,14 +20,15 @@ public class RandomPlayerApp {
 
     public static void main(String[] args) {
         int numGames = (args.length < 1) ? 1 : Integer.valueOf(args[0]);
+        boolean reuseAgents = args.length > 2;
         if (args.length < 2) {
-            runGamesAndLogResults(numGames, "");
+            runGamesAndLogResults(numGames, "", reuseAgents);
         } else {
-            runGamesAndLogResults(numGames, args[1]);
+            runGamesAndLogResults(numGames, args[1], reuseAgents);
         }
     }
 
-    private static void runGamesAndLogResults(int numGames, String agentDescriptor) {
+    private static void runGamesAndLogResults(int numGames, String agentDescriptor, boolean reuseAgents) {
 
         Random random = new Random();
         StatsSummary scoreSummary = new BasicStats();
