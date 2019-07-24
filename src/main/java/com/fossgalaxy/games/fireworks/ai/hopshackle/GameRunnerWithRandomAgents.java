@@ -80,22 +80,17 @@ public class GameRunnerWithRandomAgents extends GameRunner {
             agentIndicesByPlayer[i] = -1;       // to check they are all populated
     }
 
-    /**
-     * Add a player to the game.
-     * <p>
-     * This should not be attempted once the game has started.
-     *
-     * @param player the player to add to the game
-     */
-    public void addPlayer(Player player) {
-        logger.info("player {} is {}", nPlayers, player);
-        players[nPlayers++] = Objects.requireNonNull(player);
+    public void addPlayer(Player player, String name) {
+        super.addPlayer(player);
+        playerNames.add(name);
     }
 
     public int addRandomPlayer() {
         int roll = rnd.nextInt(agentDescriptors.length);
         agentIndicesByPlayer[nPlayers] = roll;
-        addPlayer(new HopshackleAgentPlayer(agentDescriptors[roll], agents[roll]));
+        addPlayer(new HopshackleAgentPlayer(agentDescriptors[roll], agents[roll]), agentDescriptors[roll]);
+        if (playerNames.size() != nPlayers)
+            throw new AssertionError("WTF");
         return roll;
     }
 

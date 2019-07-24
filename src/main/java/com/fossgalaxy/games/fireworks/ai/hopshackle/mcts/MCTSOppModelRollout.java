@@ -34,6 +34,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
     protected List<Agent> opponentModels;
     protected static Map<String, double[]> historicModels = new HashMap();
     protected String[] agentNames;
+    protected boolean learningMode = false;
 
     {
 /*
@@ -77,32 +78,31 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
 
     @Override
     public void receiveID(int agentID, String[] names) {
+        // this should be called when we set up the game
+        lastState = null;
         pdf = new double[names.length][opponentModelFullList.size()];
         for (int i = 0; i < names.length; i++) pdf[i][8] = 5.0;
         pdf[agentID][8] = 100.0;
+        historicModels.put("you", pdf[agentID].clone());
 
+        if (names.length == 0 || names[0] == null) {
+            learningMode = false;
+            return;     // we are running in Mixed, but not Learning track
+        }
+
+        learningMode = true;
         agentNames = names;
-        for (String n : names) {
-            if (historicModels.containsKey(n)) {
-                pdf[agentID] = historicModels.get(n).clone();
-            } else {
-                historicModels.put(n, new double[opponentModelFullList.size()]);
+        for (int i = 0; i < names.length; i++) {
+            if (historicModels.containsKey(names[i])) {
+                pdf[i] = historicModels.get(names[i]).clone();
             }
         }
-        //TODO: Now need to record the results at the end of the game...(or when we updatePosterior)
-        // TODO: Then need to add boolean flag as to whether names are retained from game to game
     }
 
 
     @Override
     public Action doMove(int agentID, GameState state) {
-        if (lastState == null) {
-            // new game
-            lastState = new BasicState(state.getPlayerCount());
-            historyIndex = 0;
-
-        }
-        updatePosteriorModel(state, agentID);
+        if (lastState != null) updatePosteriorModel(state, agentID);
         lastState = state.getCopy();
         historyIndex = state.getActionHistory().size();
         if (historyIndex != state.getTurnNumber())
@@ -312,14 +312,27 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
 
     public List<Map<Integer, Double>> getCurrentOpponentBeliefs() {
         List<Map<Integer, Double>> retValue = new ArrayList<>();
-        for (int player = 0; player < pdf.length; player++) {
-            List<Double> pdf = getPDF(player);
-            Map<Integer, Double> beliefs = new HashMap<>();
-            IntStream.range(0, opponentModelFullList.size())
-                    .forEach(i ->
-                            beliefs.put(i, pdf.get(i)));
-            retValue.add(beliefs);
-        }
+        if (pdf != null)
+            for (int player = 0; player < pdf.length; player++) {
+                List<Double> pdf = getPDF(player);
+                Map<Integer, Double> beliefs = new HashMap<>();
+                IntStream.range(0, opponentModelFullList.size())
+                        .forEach(i ->
+                                beliefs.put(i, pdf.get(i)));
+                retValue.add(beliefs);
+            }
+        return retValue;
+    }
+    public Map<String, Map<Integer, Double>> getFullBeliefs() {
+        Map<String, Map<Integer, Double>> retValue = new HashMap<>();
+            for (String name : historicModels.keySet()) {
+                List<Double> pdf = getPDF(historicModels.get(name));
+                Map<Integer, Double> beliefs = new HashMap<>();
+                IntStream.range(0, opponentModelFullList.size())
+                        .forEach(i ->
+                                beliefs.put(i, pdf.get(i)));
+                retValue.put(name, beliefs);
+            }
         return retValue;
     }
 
@@ -355,6 +368,9 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         // now a log-likelihood added on to the running total for that agent type
         for (int i = 0; i < lik.length; i++) {
             pdf[playerID][i] -= largestCumulativeLogLik;
+        }
+        if (learningMode) {
+            historicModels.put(agentNames[playerID], pdf[playerID].clone());
         }
         if (logger.isInfoEnabled()) {
             String logLikStr = Arrays.stream(pdf[playerID]).mapToObj(d -> String.format("%.3f", d)).collect(Collectors.joining("\t"));
@@ -422,7 +438,10 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
     }
 
     private List<Double> getPDF(int player) {
-        List<Double> temppdf = Arrays.stream(pdf[player])
+        return getPDF(pdf[player]);
+    }
+    private List<Double> getPDF(double[] loglik) {
+        List<Double> temppdf = Arrays.stream(loglik)
                 .mapToObj(k -> Math.exp(k))
                 .collect(Collectors.toList());
         double total = temppdf.stream().reduce(0.0, Double::sum);

@@ -29,6 +29,7 @@ public class GameRunner {
 
     protected int nPlayers;
     protected int moves;
+    protected List<String> playerNames = new ArrayList<>();
 
     protected int nextPlayer;
 
@@ -54,7 +55,7 @@ public class GameRunner {
         this(gameID, new BasicState(HAND_SIZE[expectedPlayers], expectedPlayers));
     }
 
-    public GameRunner(String gameID, GameState state){
+    public GameRunner(String gameID, GameState state) {
         this.players = new Player[state.getPlayerCount()];
         this.state = Objects.requireNonNull(state);
         this.nPlayers = 0;
@@ -90,14 +91,14 @@ public class GameRunner {
      *
      * @param seed the random seed to use for deck ordering.
      */
-    protected void init(Long seed) {
+    protected void init(Long seed, boolean sendNames) {
         logger.info("game init started - {} player game with seed {}", players.length, seed);
         long startTime = getTick();
 
         //step 1: tell all players their IDs
         for (int i = 0; i < players.length; i++) {
             logger.info("player {} is {}", i, players[i]);
-            players[i].setID(i, players.length);
+            players[i].setID(i, players.length, sendNames ? playerNames.toArray(new String[players.length]) : new String[players.length]);
         }
 
         state.init(seed);
@@ -152,7 +153,7 @@ public class GameRunner {
         long endTime = getTick();
         logger.debug("agent {} took {} ms to make their move", nextPlayer, endTime - startTime);
         logger.debug("move {}: player {} made move {}", moves, nextPlayer, action);
-  //      System.out.println(String.format("move %d: player %d made move %s", moves, nextPlayer, action));
+        //      System.out.println(String.format("move %d: player %d made move %s", moves, nextPlayer, action));
 
         //if the more was illegal, throw a rules violation
         if (!action.isLegal(nextPlayer, state)) {
@@ -177,13 +178,13 @@ public class GameRunner {
      * @param seed the seed to use for deck ordering
      * @return the result of the game
      */
-    public GameStats playGame(Long seed) {
+    public GameStats playGame(Long seed, boolean sendNames) {
         int strikes = 0;
         long startTime = System.currentTimeMillis();
 
         try {
             assert nPlayers == players.length;
-            init(seed);
+            init(seed, sendNames);
 
             while (!state.isGameOver()) {
                 try {
@@ -215,7 +216,7 @@ public class GameRunner {
     /**
      * Tell the players about an action that has occurred
      *
-     * @param actor the player who performed the action
+     * @param actor  the player who performed the action
      * @param action the action the player performed
      * @param events the events that resulted from that action
      */

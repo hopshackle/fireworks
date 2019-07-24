@@ -107,7 +107,7 @@ public class App
                 runner.addPlayer(player);
             }
 
-            GameStats stats = runner.playGame(random.nextLong());
+            GameStats stats = runner.playGame(random.nextLong(), false);
             scoreSummary.add(stats.score);
             timeSummary.add((double) stats.time / (double) stats.moves);
             livesLeft[stats.lives]++;

@@ -43,22 +43,32 @@ public class RandomPlayerApp {
 
             int overridePlayerNumber = agentDescriptor.equals("") ? -1 : random.nextInt(numPlayers);
             //add your agents to the game
-            Agent a = (overridePlayerNumber > 0) ? AgentUtils.buildAgent(agentDescriptor) : null;
+            Agent a = (overridePlayerNumber > -1) ? AgentUtils.buildAgent(agentDescriptor) : null;
             int[] agents = new int[numPlayers];
             for (int j = 0; j < numPlayers; j++) {
                 if (j == overridePlayerNumber) {
                     Player player = new HopshackleAgentPlayer(agentDescriptor, a);
-                    runner.addPlayer(player);
+                    runner.addPlayer(player, "you");
                 } else {
                     agents[j] = runner.addRandomPlayer();
                 }
             }
-
-            GameStats stats = runner.playGame(random.nextLong());
+            if (a instanceof MCTSOppModelRollout) {
+                MCTSOppModelRollout reportingAgent = (MCTSOppModelRollout) a;
+                Map<String, Map<Integer, Double>> beliefs = reportingAgent.getFullBeliefs();
+                if (!beliefs.isEmpty())
+                    for (String n : beliefs.keySet()) {
+                        System.out.println(String.format("\tBeliefs %s:", n));
+                        beliefs.get(n).entrySet().stream()
+                                .filter(e -> e.getValue() > 0.01)
+                                .forEach(e -> System.out.println(String.format("\t\t%.2f\t%2d", e.getValue(), e.getKey())));
+                    }
+            }
+            GameStats stats = runner.playGame(random.nextLong(), reuseAgents);
             scoreSummary.add(stats.score);
             timeSummary.add((double) stats.time / (double) stats.moves);
             System.out.println(String.format("Game %3d finished with score of %2d and %.0f ms per move", i, stats.score, (double) stats.time / stats.moves));
-   /*         if (a instanceof MCTSOppModelRollout) {
+            if (a instanceof MCTSOppModelRollout) {
                 MCTSOppModelRollout reportingAgent = (MCTSOppModelRollout) a;
                 List<Map<Integer, Double>> beliefs = reportingAgent.getCurrentOpponentBeliefs();
                 for (int player = 0; player < numPlayers; player++) {
@@ -68,7 +78,7 @@ public class RandomPlayerApp {
                             .filter(e -> e.getValue() > 0.01)
                             .forEach(e -> System.out.println(String.format("\t\t%.2f\t%2d", e.getValue(), e.getKey())));
                 }
-            } */
+            }
         }
 
         //print out the stats
