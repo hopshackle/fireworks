@@ -43,10 +43,10 @@ public class GameRunnerWithRandomAgents extends GameRunner {
     protected Agent[] agents = new Agent[agentDescriptors.length];
     private Random rnd = new Random();
     private int[] agentIndicesByPlayer;
-    public static List<Rule> rulesToTrackBase = RuleGenerator.generateRules("2|3|4|6|7|8|9|12|13|15", "NN");
-    public static List<Rule> rulesToTrackConv = RuleGenerator.generateRules("1|2|3|4|9|12|13|15", "YN");
-    public static StateGathererWithTarget stateGathererBase = new StateGathererWithTarget("2|3|4|6|7|8|9|12|13|15", "NN");
-    public static StateGathererWithTarget stateGathererConv  = new StateGathererWithTarget("1|2|3|4|9|12|13|15", "YN");
+    public static List<Rule> rulesToTrackBase = RuleGenerator.generateRules("2|3|4|6|7|8|9|12|13|15|18", "NN");
+    public static List<Rule> rulesToTrackConv = RuleGenerator.generateRules("1|2|3|4|9|12|13|15|18", "YN");
+    public static StateGathererWithTarget stateGathererBase = new StateGathererWithTarget("2|3|4|6|7|8|9|12|13|15|18", "NN");
+    public static StateGathererWithTarget stateGathererConv  = new StateGathererWithTarget("1|2|3|4|9|12|13|15|18", "YN");
     public static List<String> allFeatures = new ArrayList();
 
     static {
@@ -92,10 +92,11 @@ public class GameRunnerWithRandomAgents extends GameRunner {
         players[nPlayers++] = Objects.requireNonNull(player);
     }
 
-    public void addRandomPlayer(int totalPlayers) {
+    public int addRandomPlayer() {
         int roll = rnd.nextInt(agentDescriptors.length);
         agentIndicesByPlayer[nPlayers] = roll;
         addPlayer(new HopshackleAgentPlayer(agentDescriptors[roll], agents[roll]));
+        return roll;
     }
 
     /**

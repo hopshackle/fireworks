@@ -16,6 +16,7 @@ import com.fossgalaxy.games.fireworks.state.*;
 import com.fossgalaxy.games.fireworks.state.actions.*;
 import com.fossgalaxy.games.fireworks.state.events.*;
 import com.fossgalaxy.games.fireworks.utils.*;
+
 import java.io.FileInputStream;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,8 +30,10 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
     protected HopshackleNN brain;
     protected Random rnd = new Random();
     protected static List<Agent> opponentModelFullList = Arrays.stream(GameRunnerWithRandomAgents.agentDescriptors)
-            .map( desc -> AgentUtils.buildAgent(desc)).collect(Collectors.toList());
+            .map(AgentUtils::buildAgent).collect(Collectors.toList());
     protected List<Agent> opponentModels;
+    protected static Map<String, double[]> historicModels = new HashMap();
+    protected String[] agentNames;
 
     {
 /*
@@ -71,23 +74,33 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
             e.printStackTrace();
         }
     }
-/*
+
     @Override
-    public void receiveID(int id) {
-        lastState = null;
-        historyIndex = 0;
-        super.receiveID(id);
+    public void receiveID(int agentID, String[] names) {
+        pdf = new double[names.length][opponentModelFullList.size()];
+        for (int i = 0; i < names.length; i++) pdf[i][8] = 5.0;
+        pdf[agentID][8] = 100.0;
+
+        agentNames = names;
+        for (String n : names) {
+            if (historicModels.containsKey(n)) {
+                pdf[agentID] = historicModels.get(n).clone();
+            } else {
+                historicModels.put(n, new double[opponentModelFullList.size()]);
+            }
+        }
+        //TODO: Now need to record the results at the end of the game...(or when we updatePosterior)
+        // TODO: Then need to add boolean flag as to whether names are retained from game to game
     }
-*/
+
+
     @Override
     public Action doMove(int agentID, GameState state) {
         if (lastState == null) {
             // new game
             lastState = new BasicState(state.getPlayerCount());
             historyIndex = 0;
-            pdf = new double[state.getPlayerCount()][opponentModelFullList.size()];
-            for (int i = 0; i < state.getPlayerCount(); i++) pdf[i][9] = 5.0;
-            pdf[agentID][7] = 100.0;
+
         }
         updatePosteriorModel(state, agentID);
         lastState = state.getCopy();
@@ -134,7 +147,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         MCTSNode current = root;
         int treeDepth = calculateTreeDepthLimit(state);
         nodeExpanded = false;
-        int rootPlayer =  root.agentId; // (root.agentId + 1) % state.getPlayerCount();
+        int rootPlayer = root.agentId; // (root.agentId + 1) % state.getPlayerCount();
         int agentAboutToAct = rootPlayer;
 
         while (!state.isGameOver() && current.getDepth() < treeDepth && !nodeExpanded && movesLeft > 0) {
@@ -259,7 +272,7 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         if (event instanceof CardInfo) {
             return ((CardInfo) event).getPerformer();
         }
-        if ( event instanceof CardDrawn) {
+        if (event instanceof CardDrawn) {
             return ((CardDrawn) event).getPlayerId();
         }
         if (event instanceof CardDiscarded) {
@@ -295,6 +308,19 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
                 event.apply(lastState, perspective);
             }
         }
+    }
+
+    public List<Map<Integer, Double>> getCurrentOpponentBeliefs() {
+        List<Map<Integer, Double>> retValue = new ArrayList<>();
+        for (int player = 0; player < pdf.length; player++) {
+            List<Double> pdf = getPDF(player);
+            Map<Integer, Double> beliefs = new HashMap<>();
+            IntStream.range(0, opponentModelFullList.size())
+                    .forEach(i ->
+                            beliefs.put(i, pdf.get(i)));
+            retValue.add(beliefs);
+        }
+        return retValue;
     }
 
     private void updateOpponentModel(GameEvent event, int playerID, int rootPlayer) {
@@ -395,18 +421,22 @@ public class MCTSOppModelRollout extends MCTSRuleInfoSet {
         return retValue;
     }
 
+    private List<Double> getPDF(int player) {
+        List<Double> temppdf = Arrays.stream(pdf[player])
+                .mapToObj(k -> Math.exp(k))
+                .collect(Collectors.toList());
+        double total = temppdf.stream().reduce(0.0, Double::sum);
+        return temppdf.stream()
+                .map(d -> d / total)
+                .collect(Collectors.toList());
+    }
+
     private List<Agent> sampleOpponentModels() {
         List<Agent> retValue = new ArrayList<>(pdf.length);
         for (int player = 0; player < pdf.length; player++) {
 
-            List<Double> temppdf = Arrays.stream(pdf[player])
-                    .mapToObj(k -> Math.exp(k))
-                    .collect(Collectors.toList());
+            List<Double> finalpdf = getPDF(player);
 
-            double total = temppdf.stream().reduce(0.0, Double::sum);
-            List<Double> finalpdf = temppdf.stream()
-                    .map(d -> d / total)
-                    .collect(Collectors.toList());
             if (logger.isDebugEnabled()) {
                 String str = finalpdf.stream().map(d -> String.format("%.3f", d)).collect(Collectors.joining("\t"));
                 logger.debug(String.format("PDF for player %d is %s", player, str));

@@ -1,6 +1,7 @@
 package com.fossgalaxy.games.fireworks.ai;
 
 import com.fossgalaxy.games.fireworks.ai.hopshackle.*;
+import com.fossgalaxy.games.fireworks.ai.hopshackle.mcts.MCTSOppModelRollout;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.BasicStats;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.GameStats;
 import com.fossgalaxy.games.fireworks.ai.hopshackle.stats.StatsCollator;
@@ -9,7 +10,7 @@ import com.fossgalaxy.games.fireworks.players.Player;
 import com.fossgalaxy.games.fireworks.utils.AgentUtils;
 
 import java.time.format.DateTimeFormatter;
-import java.util.Random;
+import java.util.*;
 
 /**
  * Game runner for testing.
@@ -42,13 +43,14 @@ public class RandomPlayerApp {
 
             int overridePlayerNumber = agentDescriptor.equals("") ? -1 : random.nextInt(numPlayers);
             //add your agents to the game
+            Agent a = (overridePlayerNumber > 0) ? AgentUtils.buildAgent(agentDescriptor) : null;
+            int[] agents = new int[numPlayers];
             for (int j = 0; j < numPlayers; j++) {
                 if (j == overridePlayerNumber) {
-                    Agent a = AgentUtils.buildAgent(agentDescriptor);
                     Player player = new HopshackleAgentPlayer(agentDescriptor, a);
                     runner.addPlayer(player);
                 } else {
-                    runner.addRandomPlayer(numPlayers);
+                    agents[j] = runner.addRandomPlayer();
                 }
             }
 
@@ -56,6 +58,17 @@ public class RandomPlayerApp {
             scoreSummary.add(stats.score);
             timeSummary.add((double) stats.time / (double) stats.moves);
             System.out.println(String.format("Game %3d finished with score of %2d and %.0f ms per move", i, stats.score, (double) stats.time / stats.moves));
+   /*         if (a instanceof MCTSOppModelRollout) {
+                MCTSOppModelRollout reportingAgent = (MCTSOppModelRollout) a;
+                List<Map<Integer, Double>> beliefs = reportingAgent.getCurrentOpponentBeliefs();
+                for (int player = 0; player < numPlayers; player++) {
+                    if (player == overridePlayerNumber) continue;
+                    System.out.println(String.format("\tPlayer %d beliefs (Actual is %2d):", player, agents[player]));
+                    beliefs.get(player).entrySet().stream()
+                            .filter(e -> e.getValue() > 0.01)
+                            .forEach(e -> System.out.println(String.format("\t\t%.2f\t%2d", e.getValue(), e.getKey())));
+                }
+            } */
         }
 
         //print out the stats
