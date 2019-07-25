@@ -283,10 +283,10 @@ public class MCTS implements Agent, HasGameOverProcessing {
                 }
             }
             Action action = selectActionForRollout(state, playerID);
-    //        if (action == null) {
-    //            moves = rolloutDepth;
-    //            continue;
-    //        }
+            if (action == null) {
+                moves = rolloutDepth;
+                continue;
+            }
             action.apply(playerID, state);
             playerID = (playerID + 1) % state.getPlayerCount();
             moves++;

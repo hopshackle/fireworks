@@ -53,7 +53,7 @@ public class RandomPlayerApp {
                     agents[j] = runner.addRandomPlayer();
                 }
             }
-            if (a instanceof MCTSOppModelRollout) {
+  /*          if (a instanceof MCTSOppModelRollout) {
                 MCTSOppModelRollout reportingAgent = (MCTSOppModelRollout) a;
                 Map<String, Map<Integer, Double>> beliefs = reportingAgent.getFullBeliefs();
                 if (!beliefs.isEmpty())
@@ -63,12 +63,12 @@ public class RandomPlayerApp {
                                 .filter(e -> e.getValue() > 0.01)
                                 .forEach(e -> System.out.println(String.format("\t\t%.2f\t%2d", e.getValue(), e.getKey())));
                     }
-            }
+            } */
             GameStats stats = runner.playGame(random.nextLong(), reuseAgents);
             scoreSummary.add(stats.score);
             timeSummary.add((double) stats.time / (double) stats.moves);
             System.out.println(String.format("Game %3d finished with score of %2d and %.0f ms per move", i, stats.score, (double) stats.time / stats.moves));
-            if (a instanceof MCTSOppModelRollout) {
+   /*         if (a instanceof MCTSOppModelRollout) {
                 MCTSOppModelRollout reportingAgent = (MCTSOppModelRollout) a;
                 List<Map<Integer, Double>> beliefs = reportingAgent.getCurrentOpponentBeliefs();
                 for (int player = 0; player < numPlayers; player++) {
@@ -78,7 +78,7 @@ public class RandomPlayerApp {
                             .filter(e -> e.getValue() > 0.01)
                             .forEach(e -> System.out.println(String.format("\t\t%.2f\t%2d", e.getValue(), e.getKey())));
                 }
-            }
+            } */
         }
 
         //print out the stats
